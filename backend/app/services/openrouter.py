@@ -14,21 +14,24 @@ tracer = trace.get_tracer(__name__)
 class OpenRouterService:
     """Service for interacting with the OpenRouter API."""
     
-    # List of known free models on OpenRouter
+    # List of known free models on OpenRouter (updated January 2026)
     FREE_MODELS = [
-        "meta-llama/llama-3.2-3b-instruct:free",
-        "meta-llama/llama-3.2-1b-instruct:free",
-        "google/gemma-2-9b-it:free",
-        "microsoft/phi-3-mini-128k-instruct:free",
-        "microsoft/phi-3-medium-128k-instruct:free",
-        "huggingfaceh4/zephyr-7b-beta:free",
-        "openchat/openchat-7b:free",
-        "qwen/qwen-2-7b-instruct:free",
+        "xiaomi/mimo-v2-flash:free",           # 262K context - Best open-source, reasoning/coding
+        "mistralai/devstral-2512:free",        # 262K context - Agentic coding specialist
+        "deepseek/deepseek-r1-0528:free",      # 164K context - O1-level reasoning, 671B params
+        "qwen/qwen3-coder:free",               # 262K context - Code generation, tool use
+        "z-ai/glm-4.5-air:free",               # 131K context - Agent apps, thinking mode
+        "tngtech/tng-r1t-chimera:free",        # 164K context - Creative storytelling
+        "tngtech/deepseek-r1t-chimera:free",   # 164K context - Reasoning + efficiency
+        "tngtech/deepseek-r1t2-chimera:free",  # 164K context - Roleplay, long context
+        "google/gemma-3-27b-it:free",          # Gemma 3 - Multimodal
+        "meta-llama/llama-3.3-70b-instruct:free",  # Llama 3.3 70B
     ]
     
-    # Models that support image input
+    # Models that support image input (multimodal)
     MULTIMODAL_MODELS = [
-        "google/gemma-2-9b-it:free",
+        "google/gemma-3-27b-it:free",
+        "xiaomi/mimo-v2-flash:free",
     ]
     
     def __init__(self):

@@ -1,0 +1,60 @@
+services:
+  # Jaeger - Distributed Tracing Backend
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"    # Jaeger UI
+      - "4317:4317"      # OTLP gRPC receiver
+      - "4318:4318"      # OTLP HTTP receiver
+      - "6831:6831/udp"  # Jaeger Thrift UDP
+    networks:
+      - chat-network
+    restart: unless-stopped
+
+  # Backend - FastAPI Application
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chat-backend
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=chat-backend
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+      - DEBUG=false
+    ports:
+      - "8000:8000"
+    depends_on:
+      - jaeger
+    networks:
+      - chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend - React Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chat-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - chat-network
+    restart: unless-stopped
+
+networks:
+  chat-network:
+    driver: bridge

@@ -17,9 +17,6 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     print(f"🚀 Starting {settings.app_name} v{settings.app_version}")
     
-    # Setup OpenTelemetry
-    setup_telemetry(app)
-    
     yield
     
     # Shutdown
@@ -56,6 +53,9 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         lifespan=lifespan,
     )
+    
+    # Setup OpenTelemetry BEFORE adding middleware
+    setup_telemetry(app)
     
     # Configure CORS
     app.add_middleware(

@@ -8,6 +8,7 @@ from .chat import (
     HistoryResponse,
     ErrorResponse,
     MessageRole,
+    ImageData,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "HistoryResponse",
     "ErrorResponse",
     "MessageRole",
+    "ImageData",
 ]
