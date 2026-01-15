@@ -134,3 +134,74 @@ async def new_session() -> dict:
             "session_id": new_session_id,
             "success": True
         }
+
+
+@router.get(
+    "/sessions",
+    summary="Get all sessions",
+    description="Get a list of all chat sessions"
+)
+async def get_sessions() -> dict:
+    """Get all chat sessions."""
+    with tracer.start_as_current_span("api.chat.get_sessions") as span:
+        sessions = chat_history_service.get_all_sessions()
+        span.set_attribute("session_count", len(sessions))
+        
+        return {
+            "sessions": sessions,
+            "count": len(sessions),
+            "current_session_id": chat_history_service.current_session_id
+        }
+
+
+@router.post(
+    "/sessions/{session_id}/switch",
+    summary="Switch session",
+    description="Switch to an existing chat session"
+)
+async def switch_session(session_id: str) -> dict:
+    """Switch to a specific chat session."""
+    with tracer.start_as_current_span("api.chat.switch_session") as span:
+        span.set_attribute("session_id", session_id)
+        
+        success = chat_history_service.switch_session(session_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        messages = chat_history_service.get_history()
+        
+        return {
+            "message": "Session switched",
+            "session_id": session_id,
+            "messages": [
+                {
+                    "role": msg.role.value,
+                    "content": msg.content,
+                    "timestamp": msg.timestamp.isoformat() if msg.timestamp else None,
+                    "model": msg.model
+                }
+                for msg in messages
+            ],
+            "success": True
+        }
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    summary="Delete session",
+    description="Delete a chat session"
+)
+async def delete_session(session_id: str) -> dict:
+    """Delete a chat session."""
+    with tracer.start_as_current_span("api.chat.delete_session") as span:
+        span.set_attribute("session_id", session_id)
+        
+        success = chat_history_service.delete_session(session_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        return {
+            "message": "Session deleted",
+            "session_id": session_id,
+            "success": True
+        }

@@ -99,6 +99,51 @@ export const chatApi = {
       method: 'POST',
     });
   },
+
+  /**
+   * Get all sessions
+   */
+  getSessions: async (): Promise<{ 
+    sessions: Array<{
+      id: string;
+      title: string;
+      message_count: number;
+      last_updated: string;
+      is_active: boolean;
+    }>;
+    count: number;
+    current_session_id: string;
+  }> => {
+    return fetchApi('/chat/sessions');
+  },
+
+  /**
+   * Switch to a session
+   */
+  switchSession: async (sessionId: string): Promise<{
+    message: string;
+    session_id: string;
+    messages: Array<{
+      role: string;
+      content: string;
+      timestamp?: string;
+      model?: string;
+    }>;
+    success: boolean;
+  }> => {
+    return fetchApi(`/chat/sessions/${sessionId}/switch`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Delete a session
+   */
+  deleteSession: async (sessionId: string): Promise<{ message: string; session_id: string; success: boolean }> => {
+    return fetchApi(`/chat/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 /**

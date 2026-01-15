@@ -34,8 +34,12 @@ function App() {
   useEffect(() => {
     loadModels();
     loadHistory();
-    loadSessions();
   }, []);
+
+  // Load sessions when messages change
+  useEffect(() => {
+    loadSessions();
+  }, [messages]);
 
   const loadModels = async () => {
     setIsLoadingModels(true);
@@ -71,22 +75,20 @@ function App() {
     }
   };
 
-  const loadSessions = () => {
-    // In this demo, we'll create a mock session based on current messages
-    // In a real app, this would come from the backend
-    const mockSessions: ChatSession[] = [];
-    
-    if (messages.length > 0) {
-      mockSessions.push({
-        id: 'current',
-        title: 'Mevcut Sohbet',
-        messageCount: messages.length,
-        lastUpdated: new Date().toISOString(),
-        isActive: true,
-      });
+  const loadSessions = async () => {
+    try {
+      const response = await chatApi.getSessions();
+      const mappedSessions: ChatSession[] = response.sessions.map(s => ({
+        id: s.id,
+        title: s.title,
+        messageCount: s.message_count,
+        lastUpdated: s.last_updated,
+        isActive: s.is_active,
+      }));
+      setSessions(mappedSessions);
+    } catch (err) {
+      console.error('Failed to load sessions:', err);
     }
-    
-    setSessions(mockSessions);
   };
 
   const handleSendMessage = useCallback(
@@ -152,19 +154,50 @@ function App() {
       await chatApi.newSession();
       setMessages([]);
       setError(null);
+      // Reload sessions to update the sidebar
+      await loadSessions();
     } catch (err) {
       console.error('Failed to create new session:', err);
       setError('Yeni oturum oluşturulurken hata oluştu.');
     }
   };
 
-  const handleSelectSession = (id: string) => {
-    // In a real app, this would load the session from backend
-    console.log('Select session:', id);
+  const handleSelectSession = async (id: string) => {
+    try {
+      const response = await chatApi.switchSession(id);
+      if (response.success) {
+        // Map messages to ChatMessage format
+        const mappedMessages: ChatMessage[] = response.messages.map(msg => ({
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.content,
+          timestamp: msg.timestamp,
+          model: msg.model,
+        }));
+        setMessages(mappedMessages);
+        setError(null);
+        // Reload sessions to update active state
+        await loadSessions();
+      }
+    } catch (err) {
+      console.error('Failed to switch session:', err);
+      setError('Oturum değiştirilirken hata oluştu.');
+    }
   };
 
-  const handleDeleteSession = (id: string) => {
-    setSessions(prev => prev.filter(s => s.id !== id));
+  const handleDeleteSession = async (id: string) => {
+    try {
+      await chatApi.deleteSession(id);
+      // If we deleted the active session, clear messages
+      const deletedSession = sessions.find(s => s.id === id);
+      if (deletedSession?.isActive) {
+        setMessages([]);
+      }
+      // Reload sessions
+      await loadSessions();
+    } catch (err) {
+      console.error('Failed to delete session:', err);
+      setError('Oturum silinirken hata oluştu.');
+    }
   };
 
   const handleDismissError = () => {
