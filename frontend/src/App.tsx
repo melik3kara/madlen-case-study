@@ -1,10 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Header, MessageList, ChatInput, ErrorMessage } from './components';
+import { Header, MessageList, ChatInput, ErrorMessage, Sidebar } from './components';
+import type { ChatSession } from './components';
 import { chatApi, modelsApi, ApiException } from './services';
 import type { ChatMessage, ModelInfo, ImageData } from './types';
+import { Trash2, PlusCircle } from 'lucide-react';
 
 function App() {
-  // State
+  // Theme state
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  // Sidebar state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+
+  // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
@@ -12,10 +24,17 @@ function App() {
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load models on mount
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  // Load models and history on mount
   useEffect(() => {
     loadModels();
     loadHistory();
+    loadSessions();
   }, []);
 
   const loadModels = async () => {
@@ -24,7 +43,16 @@ function App() {
       const response = await modelsApi.getModels();
       setModels(response.models);
       if (response.models.length > 0 && !selectedModel) {
-        setSelectedModel(response.models[0].id);
+        // Try to find a good default model
+        const preferredModels = [
+          'meta-llama/llama-3.3-70b-instruct:free',
+          'google/gemma-3-27b-it:free',
+          'xiaomi/mimo-v2-flash:free',
+        ];
+        const defaultModel = preferredModels.find(id => 
+          response.models.some(m => m.id === id)
+        ) || response.models[0].id;
+        setSelectedModel(defaultModel);
       }
     } catch (err) {
       console.error('Failed to load models:', err);
@@ -40,8 +68,25 @@ function App() {
       setMessages(response.messages);
     } catch (err) {
       console.error('Failed to load history:', err);
-      // Don't show error for history load failure on initial load
     }
+  };
+
+  const loadSessions = () => {
+    // In this demo, we'll create a mock session based on current messages
+    // In a real app, this would come from the backend
+    const mockSessions: ChatSession[] = [];
+    
+    if (messages.length > 0) {
+      mockSessions.push({
+        id: 'current',
+        title: 'Mevcut Sohbet',
+        messageCount: messages.length,
+        lastUpdated: new Date().toISOString(),
+        isActive: true,
+      });
+    }
+    
+    setSessions(mockSessions);
   };
 
   const handleSendMessage = useCallback(
@@ -56,6 +101,7 @@ function App() {
         role: 'user',
         content,
         timestamp: new Date().toISOString(),
+        image,
       };
       setMessages((prev) => [...prev, userMessage]);
 
@@ -112,14 +158,21 @@ function App() {
     }
   };
 
+  const handleSelectSession = (id: string) => {
+    // In a real app, this would load the session from backend
+    console.log('Select session:', id);
+  };
+
+  const handleDeleteSession = (id: string) => {
+    setSessions(prev => prev.filter(s => s.id !== id));
+  };
+
   const handleDismissError = () => {
     setError(null);
   };
 
   const handleRetry = () => {
     setError(null);
-    // If there's a failed message, we could retry it
-    // For now, just clear the error
   };
 
   // Check if selected model supports images
@@ -127,50 +180,79 @@ function App() {
   const supportsImages = selectedModelInfo?.supports_images ?? false;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div className={`h-screen flex flex-col ${isDark ? 'dark' : ''}`}>
+      {/* Header */}
       <Header
         models={models}
         selectedModel={selectedModel}
         onSelectModel={setSelectedModel}
-        onClearChat={handleClearChat}
-        onNewSession={handleNewSession}
         isLoadingModels={isLoadingModels}
-        messageCount={messages.length}
+        isDark={isDark}
+        onToggleTheme={() => setIsDark(!isDark)}
       />
 
-      <main className="flex-1 flex flex-col max-w-5xl w-full mx-auto bg-white shadow-xl overflow-hidden">
-        {error && (
-          <ErrorMessage
-            message={error}
-            onRetry={handleRetry}
-            onDismiss={handleDismissError}
-          />
-        )}
-
-        <MessageList messages={messages} isLoading={isLoading} />
-
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-          disabled={isLoadingModels || !selectedModel}
-          supportsImages={supportsImages}
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <Sidebar
+          sessions={sessions}
+          onNewSession={handleNewSession}
+          onSelectSession={handleSelectSession}
+          onDeleteSession={handleDeleteSession}
+          currentMessageCount={messages.length}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
-      </main>
 
-      {/* Footer */}
-      <footer className="text-center py-2 text-xs text-gray-500">
-        <p>
-          OpenRouter API ile güçlendirilmiştir • OpenTelemetry ile izleniyor •{' '}
-          <a
-            href="http://localhost:16686"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary-600 hover:underline"
-          >
-            Jaeger UI
-          </a>
-        </p>
-      </footer>
+        {/* Chat Area */}
+        <main className="flex-1 flex flex-col min-w-0">
+          {/* Action bar */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-dark-200/50 dark:border-dark-700/50 bg-white/50 dark:bg-dark-900/50 backdrop-blur-xl">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-dark-500 dark:text-dark-400">
+                {messages.length > 0 ? `${messages.length} mesaj` : 'Yeni sohbet'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleNewSession}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-dark-100 dark:bg-dark-800 text-dark-700 dark:text-dark-300 hover:bg-dark-200 dark:hover:bg-dark-700 transition-colors"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">Yeni Sohbet</span>
+              </button>
+              <button
+                onClick={handleClearChat}
+                disabled={messages.length === 0}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-accent-50 dark:bg-accent-900/20 text-accent-600 dark:text-accent-400 hover:bg-accent-100 dark:hover:bg-accent-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Temizle</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Error message */}
+          {error && (
+            <ErrorMessage
+              message={error}
+              onRetry={handleRetry}
+              onDismiss={handleDismissError}
+            />
+          )}
+
+          {/* Messages */}
+          <MessageList messages={messages} isLoading={isLoading} />
+
+          {/* Input */}
+          <ChatInput
+            onSend={handleSendMessage}
+            isLoading={isLoading}
+            supportsImages={supportsImages}
+            placeholder={selectedModelInfo ? `${selectedModelInfo.name} ile sohbet et...` : 'Mesajınızı yazın...'}
+          />
+        </main>
+      </div>
     </div>
   );
 }

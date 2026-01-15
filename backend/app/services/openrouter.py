@@ -28,10 +28,10 @@ class OpenRouterService:
         "meta-llama/llama-3.3-70b-instruct:free",  # Llama 3.3 70B
     ]
     
-    # Models that support image input (multimodal)
+    # Models that support image input (multimodal) - fallback list
     MULTIMODAL_MODELS = [
-        "google/gemma-3-27b-it:free",
-        "xiaomi/mimo-v2-flash:free",
+        "allenai/molmo-2-8b:free",
+        "nvidia/nemotron-nano-12b-v2-vl:free",
     ]
     
     def __init__(self):
@@ -81,9 +81,13 @@ class OpenRouterService:
                         )
                         
                         if is_free:
-                            supports_images = model_id in self.MULTIMODAL_MODELS or \
-                                "vision" in model_id.lower() or \
-                                model.get("architecture", {}).get("modality", "") == "multimodal"
+                            # Check modality for image support - format is "text+image->text"
+                            modality = model.get("architecture", {}).get("modality", "")
+                            supports_images = (
+                                model_id in self.MULTIMODAL_MODELS or
+                                "vision" in model_id.lower() or
+                                "image" in modality.lower()
+                            )
                             
                             free_models.append(ModelInfo(
                                 id=model_id,

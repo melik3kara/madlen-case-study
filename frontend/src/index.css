@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    @apply bg-gradient-to-br from-primary-50 via-secondary-50 to-accent-50 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 text-dark-900 dark:text-dark-100 transition-colors duration-300;
+  }
+
+  #root {
+    height: 100vh;
+  }
+}
+
+@layer components {
+  /* Glass morphism effect */
+  .glass {
+    @apply bg-white/80 dark:bg-dark-900/80 backdrop-blur-xl border border-white/20 dark:border-dark-700/50;
+  }
+
+  .glass-strong {
+    @apply bg-white/95 dark:bg-dark-900/95 backdrop-blur-2xl border border-white/30 dark:border-dark-700/50;
+  }
+
+  /* Warm gradient button */
+  .btn-warm {
+    @apply bg-gradient-to-r from-primary-500 via-secondary-500 to-accent-500 text-white font-medium px-4 py-2 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none;
+  }
+
+  .btn-warm-outline {
+    @apply border-2 border-primary-500 text-primary-600 dark:text-primary-400 font-medium px-4 py-2 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all duration-200;
+  }
+
+  /* Input styling */
+  .input-warm {
+    @apply w-full px-4 py-3 rounded-xl border-2 border-dark-200 dark:border-dark-700 bg-white dark:bg-dark-800 focus:border-primary-500 dark:focus:border-primary-400 focus:ring-4 focus:ring-primary-500/20 outline-none transition-all duration-200 placeholder:text-dark-400 dark:placeholder:text-dark-500;
+  }
+
+  /* Card styling */
+  .card {
+    @apply bg-white dark:bg-dark-800 rounded-2xl shadow-lg border border-dark-100 dark:border-dark-700;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer;
+  }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-dark-300 dark:bg-dark-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-400 dark:bg-dark-500;
+}
+
+/* Message content styling */
+.message-content {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.message-content pre {
+  @apply bg-dark-900 dark:bg-dark-950 text-dark-100 p-4 rounded-xl overflow-x-auto my-3 border border-dark-700;
+}
+
+.message-content code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  @apply text-sm;
+}
+
+.message-content p {
+  @apply mb-3 leading-relaxed;
+}
+
+.message-content ul, .message-content ol {
+  @apply ml-6 mb-3 space-y-1;
+}
+
+.message-content li {
+  @apply text-dark-700 dark:text-dark-300;
+}
+
+.message-content h1, .message-content h2, .message-content h3 {
+  @apply font-semibold mt-4 mb-2 text-dark-900 dark:text-dark-100;
+}
+
+.message-content a {
+  @apply text-primary-600 dark:text-primary-400 hover:underline;
+}
+
+.message-content blockquote {
+  @apply border-l-4 border-primary-500 pl-4 italic text-dark-600 dark:text-dark-400 my-3;
+}
+
+/* Animation for typing indicator */
+@keyframes typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6px);
+  }
+}
+
+.typing-dot {
+  animation: typing 1.4s infinite;
+  @apply w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Shimmer loading effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, 
+    theme('colors.dark.200') 25%, 
+    theme('colors.dark.100') 50%, 
+    theme('colors.dark.200') 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .shimmer {
+  background: linear-gradient(90deg, 
+    theme('colors.dark.700') 25%, 
+    theme('colors.dark.600') 50%, 
+    theme('colors.dark.700') 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* Gradient text */
+.gradient-text {
+  @apply bg-gradient-to-r from-primary-500 via-secondary-500 to-accent-500 bg-clip-text text-transparent;
+}
+
+/* Focus ring for accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-4 focus:ring-primary-500/30 focus:border-primary-500;
+}

@@ -1,7 +1,11 @@
-export { ChatInput } from './ChatInput';
+export { Header } from './Header';
+export { ModelSelector } from './ModelSelector';
 export { ChatMessage } from './ChatMessage';
+export { ChatInput } from './ChatInput';
 export { MessageList } from './MessageList';
 export { TypingIndicator } from './TypingIndicator';
-export { ModelSelector } from './ModelSelector';
 export { ErrorMessage } from './ErrorMessage';
-export { Header } from './Header';
+export { ThemeToggle } from './ThemeToggle';
+export { ImageUpload } from './ImageUpload';
+export { Sidebar } from './Sidebar';
+export type { ChatSession } from './Sidebar';
