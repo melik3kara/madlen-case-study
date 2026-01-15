@@ -7,9 +7,11 @@ import type { ChatMessage as ChatMessageType } from '../types';
 interface MessageListProps {
   messages: ChatMessageType[];
   isLoading: boolean;
+  isDark?: boolean;
+  responseTimes?: Map<number, number>;
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
+export function MessageList({ messages, isLoading, isDark = false, responseTimes }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when new messages arrive
@@ -84,6 +86,8 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
           key={`${message.role}-${index}-${message.timestamp}`} 
           message={message}
           isLatest={index === messages.length - 1}
+          isDark={isDark}
+          responseTime={message.role === 'assistant' ? responseTimes?.get(index) : undefined}
         />
       ))}
       

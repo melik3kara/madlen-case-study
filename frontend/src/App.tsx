@@ -23,6 +23,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [responseTimes, setResponseTimes] = useState<Map<number, number>>(new Map());
 
   // Apply theme to document
   useEffect(() => {
@@ -107,6 +108,8 @@ function App() {
       };
       setMessages((prev) => [...prev, userMessage]);
 
+      const startTime = performance.now();
+
       try {
         const response = await chatApi.sendMessage({
           message: content,
@@ -114,8 +117,19 @@ function App() {
           image,
         });
 
+        const responseTime = (performance.now() - startTime) / 1000; // Convert to seconds
+
         if (response.success) {
-          setMessages((prev) => [...prev, response.message]);
+          setMessages((prev) => {
+            const newMessages = [...prev, response.message];
+            // Track response time for the new AI message
+            setResponseTimes((prevTimes) => {
+              const newTimes = new Map(prevTimes);
+              newTimes.set(newMessages.length - 1, responseTime);
+              return newTimes;
+            });
+            return newMessages;
+          });
         } else {
           throw new Error(response.error || 'Mesaj gönderilemedi');
         }
@@ -142,6 +156,7 @@ function App() {
     try {
       await chatApi.clearHistory();
       setMessages([]);
+      setResponseTimes(new Map());
       setError(null);
     } catch (err) {
       console.error('Failed to clear chat:', err);
@@ -153,6 +168,7 @@ function App() {
     try {
       await chatApi.newSession();
       setMessages([]);
+      setResponseTimes(new Map());
       setError(null);
       // Reload sessions to update the sidebar
       await loadSessions();
@@ -174,6 +190,7 @@ function App() {
           model: msg.model,
         }));
         setMessages(mappedMessages);
+        setResponseTimes(new Map()); // Clear response times for switched session
         setError(null);
         // Reload sessions to update active state
         await loadSessions();
@@ -275,7 +292,12 @@ function App() {
           )}
 
           {/* Messages */}
-          <MessageList messages={messages} isLoading={isLoading} />
+          <MessageList 
+            messages={messages} 
+            isLoading={isLoading} 
+            isDark={isDark}
+            responseTimes={responseTimes}
+          />
 
           {/* Input */}
           <ChatInput

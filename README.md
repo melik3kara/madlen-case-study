@@ -17,12 +17,14 @@ OpenRouter üzerinden çoklu AI dil modelleriyle etkileşim kurmayı sağlayan, 
 
 - [Proje Hakkında](#-proje-hakkında)
 - [Özellikler](#-özellikler)
+- [Ekstra Geliştirmeler](#-ekstra-geliştirmeler)
 - [Mimari](#-mimari)
 - [Teknik Seçimler ve Nedenleri](#-teknik-seçimler-ve-nedenleri)
 - [Kurulum ve Çalıştırma](#-kurulum-ve-çalıştırma)
 - [API Dokümantasyonu](#-api-dokümantasyonu)
 - [OpenTelemetry ve Jaeger](#-opentelemetry-ve-jaeger)
 - [Proje Yapısı](#-proje-yapısı)
+- [Sorun Giderme](#-sorun-giderme)
 
 ---
 
@@ -52,6 +54,8 @@ Bu uygulama, kullanıcıların çeşitli AI modelleriyle sohbet edebileceği tem
 - 🔍 **OpenTelemetry Tracing** - Dağıtık izleme ve hata takibi
 - 💾 **Oturum Yönetimi** - Sohbet geçmişi ve oturum değiştirme
 - 🖼️ **Multimodal Destek** - Görsel analizi yapabilen modeller
+- 🛡️ **Rate Limiting** - API koruma ve kötüye kullanım önleme
+- 🔄 **Retry Logic** - Exponential backoff ile otomatik yeniden deneme
 
 ### Frontend Özellikleri
 - 🎨 **Modern UI** - Sıcak renk paleti (sarı/turuncu/kırmızı)
@@ -60,6 +64,64 @@ Bu uygulama, kullanıcıların çeşitli AI modelleriyle sohbet edebileceği tem
 - 📚 **Sohbet Geçmişi Sidebar'ı** - Katlanabilir oturum listesi
 - 🖼️ **Görsel Yükleme** - Sürükle & bırak + otomatik sıkıştırma
 - ⏳ **Loading States** - Yazma göstergesi ve hata mesajları
+- 📝 **Markdown Rendering** - AI yanıtlarında zengin metin formatı
+- 🎨 **Syntax Highlighting** - Kod bloklarında sözdizimi renklendirme
+- ⏱️ **Response Time Display** - Yanıt süresi gösterimi
+- 📋 **Copy to Clipboard** - Tek tıkla kod/metin kopyalama
+
+---
+
+## 🚀 Ekstra Geliştirmeler
+
+Bu proje, temel gereksinimlerin ötesinde aşağıdaki production-ready özellikleri içerir:
+
+### 1. Rate Limiting (API Koruma)
+```
+├── Dakikada 60 genel istek limiti
+├── Dakikada 20 chat isteği limiti
+├── Burst koruma (saniyede max 10 istek)
+├── IP bazlı takip
+└── Rate limit header'ları (X-RateLimit-*)
+```
+
+**Neden Önemli:** Production ortamında API'yi kötüye kullanımdan ve DDoS saldırılarından korur. Her istek yanıtında kalan istek sayısı bildirilir.
+
+### 2. Retry Logic with Exponential Backoff
+```python
+MAX_RETRIES = 3
+INITIAL_BACKOFF = 1.0s
+MAX_BACKOFF = 10.0s
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+```
+
+**Neden Önemli:** OpenRouter API'sinde geçici hatalar olduğunda otomatik olarak yeniden dener. Exponential backoff ile sunucuyu aşırı yüklemez.
+
+### 3. Markdown Rendering + Syntax Highlighting
+- AI yanıtlarında tam Markdown desteği
+- 20+ programlama dili için syntax highlighting
+- Kod bloklarında tek tıkla kopyalama
+- Tablolar, listeler, blockquote desteği
+
+**Neden Önemli:** AI asistanları genellikle Markdown formatında yanıt verir. Bu özellik yanıtları okunabilir ve kullanışlı hale getirir.
+
+### 4. Response Time Tracking
+- Her AI yanıtının süresi ölçülür
+- Kullanıcıya görsel olarak gösterilir
+- OpenTelemetry ile kaydedilir
+
+**Neden Önemli:** Kullanıcı deneyimi için şeffaflık sağlar ve performans sorunlarını tespit etmeye yardımcı olur.
+
+### 5. Comprehensive Error Handling
+- Detaylı hata mesajları
+- Kullanıcı dostu Türkçe hatalar
+- Retry butonu ile kolay yeniden deneme
+- OpenTelemetry'de hata kaydı
+
+### 6. Image Compression
+- Otomatik görsel boyutlandırma (max 1024x1024)
+- Kalite optimizasyonu
+- Base64 encoding
+- Boyut limiti kontrolü (max 2MB)
 
 ---
 
@@ -90,11 +152,12 @@ Bu uygulama, kullanıcıların çeşitli AI modelleriyle sohbet edebileceği tem
 
 1. **Kullanıcı** → Frontend'de mesaj yazar
 2. **Frontend** → `/api/chat` endpoint'ine POST isteği
-3. **Nginx** → İsteği backend'e proxy'ler
-4. **Backend** → OpenRouter API'ye istek gönderir
-5. **OpenRouter** → AI modelinden yanıt alır
-6. **Backend** → Yanıtı cache'ler, trace'i Jaeger'a gönderir
-7. **Frontend** → Yanıtı kullanıcıya gösterir
+3. **Rate Limiter** → İstek limitini kontrol eder
+4. **Nginx** → İsteği backend'e proxy'ler
+5. **Backend** → OpenRouter API'ye istek gönderir (retry logic ile)
+6. **OpenRouter** → AI modelinden yanıt alır
+7. **Backend** → Yanıtı cache'ler, trace'i Jaeger'a gönderir
+8. **Frontend** → Yanıtı Markdown olarak render eder
 
 ---
 
@@ -106,9 +169,9 @@ Bu uygulama, kullanıcıların çeşitli AI modelleriyle sohbet edebileceği tem
 |-----------|--------------|
 | **Python 3.11** | Modern async özellikler, geniş kütüphane desteği, hızlı geliştirme |
 | **FastAPI** | Yüksek performans, otomatik OpenAPI dokümantasyonu, native async desteği, Pydantic entegrasyonu |
-| **httpx** | Async HTTP istemci, HTTP/2 desteği, modern API |
+| **httpx** | Async HTTP istemci, HTTP/2 desteği, modern API, retry desteği |
 | **Pydantic** | Type-safe veri validasyonu, otomatik JSON serialization |
-| **OpenTelemetry** | Endüstri standardı dağıtık izleme, vendor-agnostic |
+| **OpenTelemetry** | Endüstri standardı dağıtık izleme, vendor-agnostic, OTLP protokolü |
 | **prometheus-client** | Standart metrik formatı, Grafana uyumluluğu |
 
 ### Frontend Teknolojileri
@@ -120,6 +183,8 @@ Bu uygulama, kullanıcıların çeşitli AI modelleriyle sohbet edebileceği tem
 | **Vite** | Anında HMR, hızlı build, modern ESM desteği |
 | **TailwindCSS** | Utility-first yaklaşım, hızlı prototipleme, dark mode desteği |
 | **Lucide React** | Temiz, tutarlı ikon seti, tree-shaking desteği |
+| **react-markdown** | Güvenli Markdown rendering, özelleştirilebilir component'ler |
+| **react-syntax-highlighter** | 100+ dil desteği, tema uyumluluğu |
 
 ### Altyapı Teknolojileri
 
@@ -150,7 +215,7 @@ cd madlen-case-study
 ### Adım 2: Ortam Değişkenlerini Ayarlayın
 
 ```bash
-# .env dosyası oluşturun (zaten mevcutsa bu adımı atlayın)
+# .env dosyası oluşturun
 cp .env.example .env
 
 # .env dosyasını düzenleyip API anahtarınızı ekleyin
@@ -222,6 +287,18 @@ docker-compose down -v
 | `GET` | `/metrics` | Prometheus metrikleri |
 | `GET` | `/docs` | Swagger UI |
 
+### Rate Limit Header'ları
+
+Her API yanıtında aşağıdaki header'lar bulunur:
+
+```
+X-RateLimit-Limit-Minute: 60
+X-RateLimit-Remaining-Minute: 59
+X-RateLimit-Limit-Hour: 500
+X-RateLimit-Remaining-Hour: 499
+X-Response-Time: 0.125s
+```
+
 ### Örnek İstek
 
 ```bash
@@ -241,43 +318,70 @@ curl http://localhost:8000/api/models
 
 ## 🔍 OpenTelemetry ve Jaeger
 
-### Jaeger UI'a Erişim
+### OpenTelemetry Entegrasyonu
+
+Uygulama, kritik işlemler için kapsamlı OpenTelemetry enstrümantasyonu içerir:
+
+#### Enstrümante Edilen Bileşenler
+
+| Bileşen | Açıklama |
+|---------|----------|
+| **FastAPI** | Otomatik HTTP istek/yanıt tracing |
+| **httpx** | OpenRouter API çağrıları tracing |
+| **Chat Service** | Kullanıcı etkileşimleri |
+| **OpenRouter Service** | AI model çağrıları |
+| **Chat History** | Oturum yönetimi işlemleri |
+
+#### Span Hierarchy
+
+```
+🔵 HTTP POST /api/chat
+├── 📊 api.chat.send_message (ana işlem)
+│   ├── event: "Adding user message to history"
+│   ├── event: "Sending message to OpenRouter"
+│   └── event: "Adding assistant response to history"
+│
+├── 🌐 openrouter.send_message (API çağrısı)
+│   ├── event: "Sending request to OpenRouter"
+│   ├── event: "Retry attempt 1/3" (hata durumunda)
+│   └── event: "Response received successfully"
+│
+├── 💾 chat_history.add_message (user)
+│   └── session_id, message_role
+│
+└── 💾 chat_history.add_message (assistant)
+    └── session_id, message_role, model
+```
+
+### Jaeger Kurulum ve Kullanım
+
+Jaeger, Docker Compose ile otomatik olarak başlatılır ve `http://localhost:16686` adresinde erişilebilir.
+
+#### Jaeger UI'a Erişim
 
 1. Tarayıcınızda **http://localhost:16686** adresini açın
 2. **Service** dropdown'undan `chat-backend` seçin
 3. **Find Traces** butonuna tıklayın
 
-### Trace Yapısı
+#### Trace Arama
 
-Her chat isteği aşağıdaki span hiyerarşisini oluşturur:
+| Filtre | Örnek | Açıklama |
+|--------|-------|----------|
+| **Service** | `chat-backend` | Servis adına göre filtrele |
+| **Operation** | `POST /api/chat` | İşlem adına göre filtrele |
+| **Tags** | `model.id=meta-llama/...` | Tag'e göre filtrele |
+| **Min Duration** | `1s` | Minimum süreye göre filtrele |
+| **Max Duration** | `10s` | Maksimum süreye göre filtrele |
 
-```
-POST /api/chat (toplam süre)
-├── api.chat.send_message
-│   ├── model.id: meta-llama/llama-3.3-70b-instruct:free
-│   ├── model.provider: meta-llama
-│   ├── message.length: 25
-│   ├── message.word_count: 4
-│   ├── response.length: 150
-│   ├── response.word_count: 25
-│   ├── tokens.prompt: 38
-│   ├── tokens.completion: 45
-│   ├── tokens.total: 83
-│   └── duration_seconds: 2.5
-│
-├── openrouter.send_message
-│   ├── api.endpoint: https://openrouter.ai/api/v1/chat/completions
-│   ├── http.status_code: 200
-│   └── response.finish_reason: stop
-│
-├── chat_history.add_message (user)
-│   ├── session_id: abc-123
-│   └── message_role: user
-│
-└── chat_history.add_message (assistant)
-    ├── session_id: abc-123
-    └── message_role: assistant
-```
+#### Trace Analizi
+
+Jaeger UI'da bir trace seçtiğinizde:
+
+1. **Timeline View** - Span'ların zaman çizelgesi
+2. **Span Details** - Her span'ın detaylı bilgileri
+3. **Tags** - Span attribute'ları
+4. **Logs/Events** - Span içindeki event'ler
+5. **Process** - Servis bilgileri
 
 ### Trace'lerde Kaydedilen Bilgiler
 
@@ -299,6 +403,10 @@ POST /api/chat (toplam süre)
 | **Görsel** | `has_image` | Görsel içerip içermediği |
 | | `image.media_type` | Görsel formatı |
 | | `image.size_bytes` | Görsel boyutu |
+| **Retry** | `retry.attempts` | Yeniden deneme sayısı |
+| | `retry.exhausted` | Tüm denemeler tükendi mi |
+| **Hata** | `error.type` | Hata türü |
+| | `error.message` | Hata mesajı |
 
 ### Prometheus Metrikleri
 
@@ -339,6 +447,9 @@ madlen-case-study/
 │   │   ├── __init__.py
 │   │   ├── main.py              # FastAPI uygulama başlangıcı
 │   │   ├── config.py            # Yapılandırma ve ortam değişkenleri
+│   │   ├── middleware/          # Middleware modülleri
+│   │   │   ├── __init__.py
+│   │   │   └── rate_limit.py    # Rate limiting middleware
 │   │   ├── routers/
 │   │   │   ├── __init__.py
 │   │   │   ├── chat.py          # Chat endpoint'leri
@@ -348,7 +459,7 @@ madlen-case-study/
 │   │   │   └── chat.py          # Pydantic şemaları
 │   │   ├── services/
 │   │   │   ├── __init__.py
-│   │   │   ├── openrouter.py    # OpenRouter API servisi
+│   │   │   ├── openrouter.py    # OpenRouter API servisi (retry logic)
 │   │   │   └── chat_history.py  # Sohbet geçmişi yönetimi
 │   │   └── telemetry/
 │   │       ├── __init__.py
@@ -363,10 +474,10 @@ madlen-case-study/
 │   │   │   ├── Header.tsx       # Üst menü ve model seçici
 │   │   │   ├── Sidebar.tsx      # Sohbet geçmişi sidebar'ı
 │   │   │   ├── ChatInput.tsx    # Mesaj giriş alanı
-│   │   │   ├── ChatMessage.tsx  # Mesaj baloncuğu
+│   │   │   ├── ChatMessage.tsx  # Markdown + Syntax Highlighting
 │   │   │   ├── MessageList.tsx  # Mesaj listesi
 │   │   │   ├── ModelSelector.tsx# Model seçim dropdown'u
-│   │   │   ├── ImageUpload.tsx  # Görsel yükleme
+│   │   │   ├── ImageUpload.tsx  # Görsel yükleme + sıkıştırma
 │   │   │   ├── ThemeToggle.tsx  # Dark/Light mode geçişi
 │   │   │   └── ...
 │   │   ├── services/
@@ -407,6 +518,25 @@ kill -9 <PID>
 
 ### API Key Hatası
 `.env` dosyasında `OPENROUTER_API_KEY` değişkeninin doğru ayarlandığından emin olun.
+
+### Rate Limit Hatası (429)
+```bash
+# 429 Too Many Requests hatası alıyorsanız
+# Retry-After header'ını kontrol edin ve bekleyin
+curl -I http://localhost:8000/api/chat
+```
+
+### Jaeger'da Trace Görünmüyor
+```bash
+# Jaeger container'ının çalıştığını kontrol edin
+docker-compose ps
+
+# Jaeger loglarını kontrol edin
+docker-compose logs jaeger
+
+# Backend'in Jaeger'a bağlandığını kontrol edin
+docker-compose logs backend | grep -i "telemetry\|jaeger\|otlp"
+```
 
 ### Logları Görüntüleme
 ```bash

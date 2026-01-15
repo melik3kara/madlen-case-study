@@ -10,6 +10,7 @@ from .config import get_settings
 from .routers import chat_router, models_router
 from .telemetry import setup_telemetry, init_metrics, get_metrics, track_request
 from .telemetry.setup import shutdown_telemetry
+from .middleware import RateLimitMiddleware
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
@@ -86,6 +87,9 @@ def create_app() -> FastAPI:
     
     # Add metrics middleware
     app.add_middleware(MetricsMiddleware)
+    
+    # Add rate limiting middleware
+    app.add_middleware(RateLimitMiddleware)
     
     # Configure CORS
     app.add_middleware(

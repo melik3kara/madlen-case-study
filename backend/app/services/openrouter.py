@@ -1,6 +1,7 @@
 """OpenRouter API service for AI model interactions."""
 
 import time
+import asyncio
 import httpx
 from typing import Optional
 from opentelemetry import trace
@@ -36,6 +37,13 @@ class OpenRouterService:
         "nvidia/nemotron-nano-12b-v2-vl:free",
     ]
     
+    # Retry configuration
+    MAX_RETRIES = 3
+    INITIAL_BACKOFF = 1.0  # seconds
+    MAX_BACKOFF = 10.0  # seconds
+    BACKOFF_MULTIPLIER = 2.0
+    RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+    
     def __init__(self):
         """Initialize the OpenRouter service."""
         self.settings = get_settings()
@@ -50,6 +58,51 @@ class OpenRouterService:
             "HTTP-Referer": "http://localhost:8000",
             "X-Title": self.settings.app_name,
         }
+    
+    async def _retry_with_backoff(
+        self,
+        operation: str,
+        func,
+        span,
+        max_retries: int = None
+    ):
+        """
+        Execute an async function with exponential backoff retry.
+        
+        Args:
+            operation: Name of the operation for logging
+            func: Async function to execute
+            span: OpenTelemetry span for tracing
+            max_retries: Override default max retries
+        
+        Returns:
+            The result of the function call
+        """
+        retries = max_retries or self.MAX_RETRIES
+        backoff = self.INITIAL_BACKOFF
+        last_exception = None
+        
+        for attempt in range(retries + 1):
+            try:
+                return await func()
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code not in self.RETRYABLE_STATUS_CODES:
+                    raise
+                last_exception = e
+            except (httpx.TimeoutException, httpx.ConnectError) as e:
+                last_exception = e
+            
+            if attempt < retries:
+                span.add_event(f"Retry attempt {attempt + 1}/{retries}", {
+                    "backoff_seconds": backoff,
+                    "error": str(last_exception),
+                })
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * self.BACKOFF_MULTIPLIER, self.MAX_BACKOFF)
+            else:
+                span.set_attribute("retry.attempts", attempt + 1)
+                span.set_attribute("retry.exhausted", True)
+                raise last_exception
     
     async def get_available_models(self) -> list[ModelInfo]:
         """Fetch available free models from OpenRouter."""
