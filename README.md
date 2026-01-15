@@ -1,464 +1,431 @@
-# AI Chat Application
+# 🎓 MADLEN AI Chat Application
 
-A production-ready web-based chat application that allows interaction with multiple AI language models through OpenRouter as a gateway. Built with OpenTelemetry tracing for full observability.
+**Madlen - Great Teachers Great Futures!**
 
-![Architecture](https://img.shields.io/badge/Architecture-Microservices-blue)
-![Python](https://img.shields.io/badge/Python-3.11-green)
-![React](https://img.shields.io/badge/React-18-61DAFB)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
-![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Enabled-orange)
+OpenRouter üzerinden çoklu AI dil modelleriyle etkileşim kurmayı sağlayan, üretim ortamına hazır bir web tabanlı sohbet uygulaması. OpenTelemetry ile tam izlenebilirlik sağlanmıştır.
 
-## 📋 Table of Contents
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Enabled-F5A800?logo=opentelemetry&logoColor=white)
 
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [API Documentation](#api-documentation)
-- [OpenTelemetry & Jaeger](#opentelemetry--jaeger)
-- [Project Structure](#project-structure)
-- [Development](#development)
-- [Troubleshooting](#troubleshooting)
+---
 
-## 🎯 Overview
+## 📋 İçindekiler
 
-This application provides a clean, intuitive interface for chatting with various AI models. It leverages OpenRouter as a unified gateway to access multiple LLMs, while providing full observability through OpenTelemetry tracing exported to Jaeger.
+- [Proje Hakkında](#-proje-hakkında)
+- [Özellikler](#-özellikler)
+- [Mimari](#-mimari)
+- [Teknik Seçimler ve Nedenleri](#-teknik-seçimler-ve-nedenleri)
+- [Kurulum ve Çalıştırma](#-kurulum-ve-çalıştırma)
+- [API Dokümantasyonu](#-api-dokümantasyonu)
+- [OpenTelemetry ve Jaeger](#-opentelemetry-ve-jaeger)
+- [Proje Yapısı](#-proje-yapısı)
 
-### Key Capabilities
+---
 
-- **Multi-Model Support**: Choose from various free AI models (Llama, Gemma, Phi, Qwen, etc.)
-- **Session-Based Memory**: Maintains conversation context within sessions
-- **Image Upload**: Support for multimodal models that accept images
-- **Full Tracing**: Every request is traced with detailed spans
-- **Production-Ready**: Docker-based deployment with health checks
+## 🎯 Proje Hakkında
 
-## ✨ Features
+Bu uygulama, kullanıcıların çeşitli AI modelleriyle sohbet edebileceği temiz ve kullanıcı dostu bir arayüz sunar. OpenRouter'ı birleşik bir geçit olarak kullanarak birden fazla LLM'e erişim sağlar ve Jaeger'a aktarılan OpenTelemetry izleme ile tam gözlemlenebilirlik sunar.
 
-### Core Features
-- 💬 Real-time chat interface with AI models
-- 🤖 Dynamic model selection from OpenRouter's free tier
-- 📜 Session-based chat history
-- 🖼️ Image upload for multimodal models
-- ⚡ Async API calls for better performance
-- 🔍 Full OpenTelemetry instrumentation
+### Temel Yetenekler
 
-### UI Features
-- 🎨 Modern, minimal design with TailwindCSS
-- 📱 Responsive layout
-- ⏳ Loading states and typing indicators
-- ❌ Clear error messages
-- 🔗 Direct link to Jaeger UI
+| Özellik | Açıklama |
+|---------|----------|
+| **Çoklu Model Desteği** | 26+ ücretsiz AI modeli (Llama, Gemma, Qwen, DeepSeek, vb.) |
+| **Oturum Bazlı Bellek** | Sohbet bağlamı oturumlar içinde korunur |
+| **Görsel Yükleme** | Multimodal modeller için görsel desteği |
+| **Tam İzleme** | Her istek detaylı span'larla trace edilir |
+| **Prometheus Metrics** | Performans ve kullanım metrikleri |
+| **Dark/Light Mode** | Kullanıcı tercihine göre tema desteği |
 
-## 🏗️ Architecture
+---
+
+## ✨ Özellikler
+
+### Backend Özellikleri
+- ⚡ **Async API** - FastAPI ile yüksek performanslı asenkron işlemler
+- 🔐 **OpenRouter Entegrasyonu** - 26+ ücretsiz AI modeline erişim
+- 📊 **Prometheus Metrics** - `/metrics` endpoint'i ile metrik toplama
+- 🔍 **OpenTelemetry Tracing** - Dağıtık izleme ve hata takibi
+- 💾 **Oturum Yönetimi** - Sohbet geçmişi ve oturum değiştirme
+- 🖼️ **Multimodal Destek** - Görsel analizi yapabilen modeller
+
+### Frontend Özellikleri
+- 🎨 **Modern UI** - Sıcak renk paleti (sarı/turuncu/kırmızı)
+- 🌓 **Dark/Light Mode** - Tema tercihi localStorage'da saklanır
+- 📱 **Responsive Tasarım** - Mobil uyumlu arayüz
+- 📚 **Sohbet Geçmişi Sidebar'ı** - Katlanabilir oturum listesi
+- 🖼️ **Görsel Yükleme** - Sürükle & bırak + otomatik sıkıştırma
+- ⏳ **Loading States** - Yazma göstergesi ve hata mesajları
+
+---
+
+## 🏗️ Mimari
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│                 │     │                 │     │                 │
-│    Frontend     │────▶│    Backend      │────▶│   OpenRouter    │
-│   (React/TS)    │     │   (FastAPI)     │     │      API        │
-│   Port: 3000    │     │   Port: 8000    │     │                 │
-│                 │     │                 │     │                 │
-└─────────────────┘     └────────┬────────┘     └─────────────────┘
-                                 │
-                                 │ OTLP/gRPC
-                                 ▼
-                        ┌─────────────────┐
-                        │                 │
-                        │     Jaeger      │
-                        │  (Tracing UI)   │
-                        │   Port: 16686   │
-                        │                 │
-                        └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                            Docker Compose                           │
+├─────────────────┬─────────────────┬─────────────────┬───────────────┤
+│                 │                 │                 │               │
+│    Frontend     │    Backend      │    Jaeger       │  OpenRouter   │
+│   (React/TS)    │   (FastAPI)     │  (Tracing UI)   │     API       │
+│                 │                 │                 │   (Harici)    │
+│   Port: 3000    │   Port: 8000    │   Port: 16686   │               │
+│                 │                 │                 │               │
+│   ┌─────────┐   │   ┌─────────┐   │   ┌─────────┐   │               │
+│   │ Nginx   │───┼──▶│ Uvicorn │───┼──▶│ Jaeger  │   │               │
+│   │ (Proxy) │   │   │ (ASGI)  │   │   │ (OTLP)  │   │               │
+│   └─────────┘   │   └────┬────┘   │   └─────────┘   │               │
+│                 │        │        │                 │               │
+│   Vite + React  │        ▼        │                 │               │
+│   TailwindCSS   │   OpenRouter ───┼─────────────────┼──────────────▶│
+│                 │   Service       │                 │               │
+└─────────────────┴─────────────────┴─────────────────┴───────────────┘
 ```
 
-## 🛠️ Tech Stack
+### Veri Akışı
 
-### Backend
-| Technology | Purpose | Why? |
-|------------|---------|------|
-| **Python 3.11** | Runtime | Modern features, async support |
-| **FastAPI** | Web Framework | High performance, automatic docs, async native |
-| **httpx** | HTTP Client | Async HTTP requests with HTTP/2 support |
-| **Pydantic** | Data Validation | Type-safe request/response handling |
-| **OpenTelemetry** | Observability | Industry-standard distributed tracing |
+1. **Kullanıcı** → Frontend'de mesaj yazar
+2. **Frontend** → `/api/chat` endpoint'ine POST isteği
+3. **Nginx** → İsteği backend'e proxy'ler
+4. **Backend** → OpenRouter API'ye istek gönderir
+5. **OpenRouter** → AI modelinden yanıt alır
+6. **Backend** → Yanıtı cache'ler, trace'i Jaeger'a gönderir
+7. **Frontend** → Yanıtı kullanıcıya gösterir
 
-### Frontend
-| Technology | Purpose | Why? |
-|------------|---------|------|
-| **React 18** | UI Framework | Component-based, large ecosystem |
-| **TypeScript** | Type Safety | Better DX, catch errors early |
-| **Vite** | Build Tool | Fast HMR, optimized builds |
-| **TailwindCSS** | Styling | Utility-first, rapid development |
-| **Lucide React** | Icons | Clean, consistent icon set |
+---
 
-### Infrastructure
-| Technology | Purpose | Why? |
-|------------|---------|------|
-| **Docker** | Containerization | Consistent environments |
-| **Docker Compose** | Orchestration | Simple multi-container setup |
-| **Jaeger** | Tracing Backend | Powerful trace visualization |
-| **Nginx** | Reverse Proxy | Production-grade static serving |
+## 🛠️ Teknik Seçimler ve Nedenleri
 
-## 📦 Prerequisites
+### Backend Teknolojileri
 
-- **Docker** (20.10+) and **Docker Compose** (2.0+)
-- **OpenRouter API Key** ([Get one here](https://openrouter.ai/keys))
+| Teknoloji | Seçim Nedeni |
+|-----------|--------------|
+| **Python 3.11** | Modern async özellikler, geniş kütüphane desteği, hızlı geliştirme |
+| **FastAPI** | Yüksek performans, otomatik OpenAPI dokümantasyonu, native async desteği, Pydantic entegrasyonu |
+| **httpx** | Async HTTP istemci, HTTP/2 desteği, modern API |
+| **Pydantic** | Type-safe veri validasyonu, otomatik JSON serialization |
+| **OpenTelemetry** | Endüstri standardı dağıtık izleme, vendor-agnostic |
+| **prometheus-client** | Standart metrik formatı, Grafana uyumluluğu |
 
-## 🚀 Quick Start
+### Frontend Teknolojileri
 
-### 1. Clone the Repository
+| Teknoloji | Seçim Nedeni |
+|-----------|--------------|
+| **React 18** | Component tabanlı mimari, büyük ekosistem, hooks API |
+| **TypeScript** | Compile-time hata yakalama, daha iyi IDE desteği, refactoring kolaylığı |
+| **Vite** | Anında HMR, hızlı build, modern ESM desteği |
+| **TailwindCSS** | Utility-first yaklaşım, hızlı prototipleme, dark mode desteği |
+| **Lucide React** | Temiz, tutarlı ikon seti, tree-shaking desteği |
+
+### Altyapı Teknolojileri
+
+| Teknoloji | Seçim Nedeni |
+|-----------|--------------|
+| **Docker** | Tutarlı ortam, kolay dağıtım, izolasyon |
+| **Docker Compose** | Multi-container orchestration, basit yapılandırma |
+| **Nginx** | Yüksek performanslı reverse proxy, statik dosya servisi |
+| **Jaeger** | Açık kaynak tracing UI, OTLP desteği, kolay kurulum |
+
+---
+
+## 🚀 Kurulum ve Çalıştırma
+
+### Gereksinimler
+
+- **Docker** (20.10+)
+- **Docker Compose** (2.0+)
+- **OpenRouter API Key** (https://openrouter.ai/keys adresinden ücretsiz alınabilir)
+
+### Adım 1: Projeyi Klonlayın
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/your-username/madlen-case-study.git
 cd madlen-case-study
 ```
 
-### 2. Configure Environment
+### Adım 2: Ortam Değişkenlerini Ayarlayın
 
 ```bash
-# Copy the example environment file
+# .env dosyası oluşturun (zaten mevcutsa bu adımı atlayın)
 cp .env.example .env
 
-# Edit .env and add your OpenRouter API key
-nano .env  # or use your preferred editor
+# .env dosyasını düzenleyip API anahtarınızı ekleyin
+nano .env
 ```
 
-Your `.env` file should contain:
-```
-OPENROUTER_API_KEY=sk-or-v1-your-actual-api-key-here
+**.env dosyası içeriği:**
+```env
+OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
+DEBUG=true
 ```
 
-### 3. Start the Application
+### Adım 3: Uygulamayı Başlatın
 
 ```bash
-# Build and start all services
+# Tüm servisleri build edip başlatın
 docker-compose up --build
 
-# Or run in detached mode
-docker-compose up --build -d
+# Veya arka planda çalıştırmak için
+docker-compose up -d --build
 ```
 
-### 4. Access the Application
+### Adım 4: Uygulamaya Erişin
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| **Chat UI** | http://localhost:3000 | Main application |
+| Servis | URL | Açıklama |
+|--------|-----|----------|
+| **Frontend** | http://localhost:3000 | Ana uygulama arayüzü |
 | **API Docs** | http://localhost:8000/docs | Swagger UI |
-| **Jaeger UI** | http://localhost:16686 | Trace visualization |
-| **Health Check** | http://localhost:8000/health | Backend health |
+| **Jaeger UI** | http://localhost:16686 | Trace görüntüleme |
+| **Metrics** | http://localhost:8000/metrics | Prometheus metrikleri |
+| **Health** | http://localhost:8000/health | Sağlık kontrolü |
 
-### 5. Stop the Application
+### Durdurma
 
 ```bash
+# Servisleri durdurun
 docker-compose down
 
-# Remove volumes too
+# Servisleri ve volume'ları temizleyin
 docker-compose down -v
 ```
 
-## 📡 API Documentation
+---
 
-### Endpoints
+## 📚 API Dokümantasyonu
 
-#### `POST /api/chat`
-Send a message to the AI model.
+### Temel Endpoint'ler
 
-**Request:**
-```json
-{
-  "message": "Hello, how are you?",
-  "model": "meta-llama/llama-3.2-3b-instruct:free",
-  "image": {
-    "base64_data": "...",
-    "media_type": "image/png"
-  }
-}
+#### Chat
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| `POST` | `/api/chat` | Mesaj gönder ve AI yanıtı al |
+| `GET` | `/api/chat/history` | Mevcut oturum geçmişini al |
+| `POST` | `/api/chat/new-session` | Yeni sohbet oturumu başlat |
+| `GET` | `/api/chat/sessions` | Tüm oturumları listele |
+| `POST` | `/api/chat/sessions/{id}/switch` | Oturum değiştir |
+| `DELETE` | `/api/chat/sessions/{id}` | Oturum sil |
+| `POST` | `/api/chat/clear` | Geçmişi temizle |
+
+#### Models
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| `GET` | `/api/models` | Kullanılabilir modelleri listele |
+
+#### Sistem
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| `GET` | `/health` | Sağlık kontrolü |
+| `GET` | `/metrics` | Prometheus metrikleri |
+| `GET` | `/docs` | Swagger UI |
+
+### Örnek İstek
+
+```bash
+# Mesaj gönder
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Merhaba! Nasılsın?",
+    "model": "meta-llama/llama-3.3-70b-instruct:free"
+  }'
+
+# Modelleri listele
+curl http://localhost:8000/api/models
 ```
 
-**Response:**
-```json
-{
-  "message": {
-    "role": "assistant",
-    "content": "Hello! I'm doing well, thank you for asking...",
-    "timestamp": "2024-01-15T10:30:00.000Z",
-    "model": "meta-llama/llama-3.2-3b-instruct:free"
-  },
-  "success": true
-}
-```
+---
 
-#### `GET /api/models`
-List available AI models.
+## 🔍 OpenTelemetry ve Jaeger
 
-**Response:**
-```json
-{
-  "models": [
-    {
-      "id": "meta-llama/llama-3.2-3b-instruct:free",
-      "name": "Llama 3.2 3B Instruct",
-      "supports_images": false
-    }
-  ],
-  "count": 8
-}
-```
+### Jaeger UI'a Erişim
 
-#### `GET /api/chat/history`
-Get current session chat history.
+1. Tarayıcınızda **http://localhost:16686** adresini açın
+2. **Service** dropdown'undan `chat-backend` seçin
+3. **Find Traces** butonuna tıklayın
 
-**Response:**
-```json
-{
-  "messages": [...],
-  "count": 10,
-  "session_id": "uuid-here"
-}
-```
+### Trace Yapısı
 
-#### `POST /api/chat/clear`
-Clear current session history.
-
-#### `POST /api/chat/new-session`
-Start a new chat session.
-
-### Interactive Documentation
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-## 🔍 OpenTelemetry & Jaeger
-
-### What is Traced?
-
-The application creates detailed traces for:
-
-1. **Incoming API Requests**
-   - HTTP method, path, status code
-   - Request duration
-   - Client information
-
-2. **OpenRouter API Calls**
-   - Model selection
-   - Request/response sizes
-   - Latency metrics
-
-3. **Chat History Operations**
-   - Message additions
-   - History retrievals
-   - Session management
-
-4. **Errors & Exceptions**
-   - Full stack traces
-   - Error context
-
-### Accessing Jaeger UI
-
-1. Open http://localhost:16686
-2. Select "chat-backend" from the Service dropdown
-3. Click "Find Traces"
-4. Click on any trace to see detailed spans
-
-### Understanding Traces
-
-Each trace shows the full request lifecycle:
+Her chat isteği aşağıdaki span hiyerarşisini oluşturur:
 
 ```
-api.chat.send_message (total: 1.2s)
-├── chat_history.add_message (5ms)
-├── openrouter.send_message (1.1s)
-│   ├── HTTP POST openrouter.ai/api/v1/chat/completions
-│   └── Response received
-└── chat_history.add_message (3ms)
+POST /api/chat (toplam süre)
+├── api.chat.send_message
+│   ├── model.id: meta-llama/llama-3.3-70b-instruct:free
+│   ├── model.provider: meta-llama
+│   ├── message.length: 25
+│   ├── message.word_count: 4
+│   ├── response.length: 150
+│   ├── response.word_count: 25
+│   ├── tokens.prompt: 38
+│   ├── tokens.completion: 45
+│   ├── tokens.total: 83
+│   └── duration_seconds: 2.5
+│
+├── openrouter.send_message
+│   ├── api.endpoint: https://openrouter.ai/api/v1/chat/completions
+│   ├── http.status_code: 200
+│   └── response.finish_reason: stop
+│
+├── chat_history.add_message (user)
+│   ├── session_id: abc-123
+│   └── message_role: user
+│
+└── chat_history.add_message (assistant)
+    ├── session_id: abc-123
+    └── message_role: assistant
 ```
 
-### Trace Attributes
+### Trace'lerde Kaydedilen Bilgiler
 
-Key attributes captured in spans:
+| Kategori | Attribute | Açıklama |
+|----------|-----------|----------|
+| **Model** | `model.id` | Kullanılan model ID'si |
+| | `model.provider` | Model sağlayıcısı (meta-llama, google, vb.) |
+| **Mesaj** | `message.length` | Giriş mesajı karakter sayısı |
+| | `message.word_count` | Giriş mesajı kelime sayısı |
+| | `response.length` | Yanıt karakter sayısı |
+| | `response.word_count` | Yanıt kelime sayısı |
+| **Token** | `tokens.prompt` | Prompt token sayısı |
+| | `tokens.completion` | Completion token sayısı |
+| | `tokens.total` | Toplam token sayısı |
+| **Performans** | `duration_seconds` | İşlem süresi |
+| | `http.status_code` | HTTP durum kodu |
+| **Oturum** | `session.id` | Aktif oturum ID'si |
+| | `context.message_count` | Bağlamdaki mesaj sayısı |
+| **Görsel** | `has_image` | Görsel içerip içermediği |
+| | `image.media_type` | Görsel formatı |
+| | `image.size_bytes` | Görsel boyutu |
 
-| Attribute | Description |
-|-----------|-------------|
-| `model` | AI model used |
-| `message_length` | Input message length |
-| `response_length` | AI response length |
-| `session_id` | Chat session identifier |
-| `has_image` | Whether request included an image |
+### Prometheus Metrikleri
 
-## 📁 Project Structure
+`/metrics` endpoint'inden alınabilecek metrikler:
+
+```prometheus
+# HTTP istekleri
+http_requests_total{method="POST", endpoint="/api/chat", status="200"}
+http_request_duration_seconds_bucket{method="POST", endpoint="/api/chat"}
+
+# Chat metrikleri
+chat_requests_total{model="meta-llama/llama-3.3-70b-instruct:free", status="success"}
+chat_request_duration_seconds_bucket{model="meta-llama/llama-3.3-70b-instruct:free"}
+chat_message_length_chars_bucket{role="user"}
+chat_message_length_chars_bucket{role="assistant"}
+
+# Model kullanımı
+model_usage_total{model_id="meta-llama/llama-3.3-70b-instruct:free"}
+
+# OpenRouter API
+openrouter_requests_total{model="...", status="success"}
+openrouter_request_duration_seconds_bucket{model="..."}
+
+# Oturum ve hatalar
+active_sessions_count
+errors_total{type="ValueError", endpoint="/api/chat"}
+image_uploads_total{media_type="image/jpeg", status="success"}
+```
+
+---
+
+## 📁 Proje Yapısı
 
 ```
 madlen-case-study/
 ├── backend/
 │   ├── app/
 │   │   ├── __init__.py
-│   │   ├── main.py              # FastAPI application
-│   │   ├── config.py            # Configuration management
+│   │   ├── main.py              # FastAPI uygulama başlangıcı
+│   │   ├── config.py            # Yapılandırma ve ortam değişkenleri
 │   │   ├── routers/
 │   │   │   ├── __init__.py
-│   │   │   ├── chat.py          # Chat endpoints
-│   │   │   └── models.py        # Models endpoint
+│   │   │   ├── chat.py          # Chat endpoint'leri
+│   │   │   └── models.py        # Model endpoint'leri
 │   │   ├── schemas/
 │   │   │   ├── __init__.py
-│   │   │   └── chat.py          # Pydantic models
+│   │   │   └── chat.py          # Pydantic şemaları
 │   │   ├── services/
 │   │   │   ├── __init__.py
-│   │   │   ├── openrouter.py    # OpenRouter integration
-│   │   │   └── chat_history.py  # Session management
+│   │   │   ├── openrouter.py    # OpenRouter API servisi
+│   │   │   └── chat_history.py  # Sohbet geçmişi yönetimi
 │   │   └── telemetry/
 │   │       ├── __init__.py
-│   │       └── setup.py         # OpenTelemetry config
-│   ├── Dockerfile
-│   └── requirements.txt
+│   │       ├── setup.py         # OpenTelemetry yapılandırması
+│   │       └── metrics.py       # Prometheus metrikleri
+│   ├── requirements.txt
+│   └── Dockerfile
+│
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── ChatInput.tsx
-│   │   │   ├── ChatMessage.tsx
-│   │   │   ├── MessageList.tsx
-│   │   │   ├── ModelSelector.tsx
-│   │   │   ├── Header.tsx
-│   │   │   ├── ErrorMessage.tsx
-│   │   │   └── TypingIndicator.tsx
+│   │   │   ├── Header.tsx       # Üst menü ve model seçici
+│   │   │   ├── Sidebar.tsx      # Sohbet geçmişi sidebar'ı
+│   │   │   ├── ChatInput.tsx    # Mesaj giriş alanı
+│   │   │   ├── ChatMessage.tsx  # Mesaj baloncuğu
+│   │   │   ├── MessageList.tsx  # Mesaj listesi
+│   │   │   ├── ModelSelector.tsx# Model seçim dropdown'u
+│   │   │   ├── ImageUpload.tsx  # Görsel yükleme
+│   │   │   ├── ThemeToggle.tsx  # Dark/Light mode geçişi
+│   │   │   └── ...
 │   │   ├── services/
-│   │   │   └── api.ts
+│   │   │   └── api.ts           # API istemci fonksiyonları
 │   │   ├── types/
-│   │   │   └── index.ts
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── index.css
-│   ├── Dockerfile
-│   ├── nginx.conf
+│   │   │   └── index.ts         # TypeScript tip tanımları
+│   │   ├── App.tsx              # Ana uygulama bileşeni
+│   │   └── main.tsx             # React giriş noktası
 │   ├── package.json
-│   └── vite.config.ts
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-└── README.md
+│   ├── tailwind.config.js
+│   ├── nginx.conf
+│   └── Dockerfile
+│
+├── docker-compose.yml           # Multi-container yapılandırması
+├── .env.example                 # Örnek ortam değişkenleri
+└── README.md                    # Bu dosya
 ```
-
-## 💻 Development
-
-### Local Development (Without Docker)
-
-#### Backend
-
-```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set environment variable
-export OPENROUTER_API_KEY=your-key-here
-
-# Run development server
-uvicorn app.main:app --reload --port 8000
-```
-
-#### Frontend
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-```
-
-### Running Tests
-
-```bash
-# Backend tests (if added)
-cd backend
-pytest
-
-# Frontend tests (if added)
-cd frontend
-npm test
-```
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-#### 1. "Connection refused" error
-
-**Cause**: Backend or Jaeger not ready yet.
-
-**Solution**: Wait a few seconds for services to start, or check logs:
-```bash
-docker-compose logs backend
-```
-
-#### 2. "API key not found" error
-
-**Cause**: Missing or invalid OpenRouter API key.
-
-**Solution**: 
-1. Check `.env` file exists and contains valid key
-2. Ensure no extra spaces or quotes around the key
-3. Restart containers after updating `.env`
-
-#### 3. "Model not found" error
-
-**Cause**: Selected model may not be available.
-
-**Solution**: Refresh the page to get updated model list.
-
-#### 4. Frontend not loading
-
-**Cause**: Frontend build failed.
-
-**Solution**:
-```bash
-docker-compose logs frontend
-docker-compose up --build frontend
-```
-
-#### 5. Traces not appearing in Jaeger
-
-**Cause**: Jaeger not receiving traces.
-
-**Solution**:
-1. Ensure Jaeger is running: `docker-compose ps`
-2. Check backend logs for telemetry errors
-3. Wait a few seconds for traces to appear
-
-### Viewing Logs
-
-```bash
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f jaeger
-```
-
-### Restarting Services
-
-```bash
-# Restart specific service
-docker-compose restart backend
-
-# Rebuild and restart
-docker-compose up --build -d backend
-```
-
-## 📄 License
-
-This project is for demonstration purposes.
 
 ---
 
-**Built with ❤️ using FastAPI, React, and OpenTelemetry**
+## 🐛 Sorun Giderme
+
+### Docker Daemon Çalışmıyor
+```bash
+# Docker Desktop'ı başlatın veya
+sudo systemctl start docker
+```
+
+### Port Çakışması
+```bash
+# 3000 veya 8000 portunu kullanan işlemi bulun
+lsof -i :3000
+lsof -i :8000
+
+# İşlemi durdurun
+kill -9 <PID>
+```
+
+### API Key Hatası
+`.env` dosyasında `OPENROUTER_API_KEY` değişkeninin doğru ayarlandığından emin olun.
+
+### Logları Görüntüleme
+```bash
+# Tüm servis logları
+docker-compose logs -f
+
+# Sadece backend logları
+docker-compose logs -f backend
+
+# Sadece frontend logları
+docker-compose logs -f frontend
+```
+
+---
+
+## 📄 Lisans
+
+Bu proje eğitim amaçlı geliştirilmiştir.
+
+---
+
+**Madlen - Great Teachers Great Futures! 🎓**

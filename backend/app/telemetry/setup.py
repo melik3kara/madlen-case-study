@@ -46,13 +46,11 @@ def setup_telemetry(app) -> None:
     # Instrument FastAPI
     FastAPIInstrumentor.instrument_app(
         app,
-        excluded_urls="/health,/docs,/openapi.json,/redoc",
+        excluded_urls="/health,/docs,/openapi.json,/redoc,/metrics",
     )
     
     # Instrument httpx for outgoing requests
     HTTPXClientInstrumentor().instrument()
-    
-    print(f"✅ OpenTelemetry configured - exporting to {settings.otel_exporter_otlp_endpoint}")
 
 
 def shutdown_telemetry() -> None:

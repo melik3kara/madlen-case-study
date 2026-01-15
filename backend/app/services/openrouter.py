@@ -1,5 +1,6 @@
 """OpenRouter API service for AI model interactions."""
 
+import time
 import httpx
 from typing import Optional
 from opentelemetry import trace
@@ -7,6 +8,7 @@ from opentelemetry.trace import Status, StatusCode
 
 from ..config import get_settings
 from ..schemas import ModelInfo, ImageData
+from ..telemetry import track_openrouter_request
 
 tracer = trace.get_tracer(__name__)
 
@@ -135,10 +137,21 @@ class OpenRouterService:
         image: Optional[ImageData] = None
     ) -> str:
         """Send a message to the OpenRouter API and get a response."""
+        start_time = time.perf_counter()
+        
         with tracer.start_as_current_span("openrouter.send_message") as span:
-            span.set_attribute("model", model)
-            span.set_attribute("message_count", len(messages))
+            # Rich span attributes
+            span.set_attribute("model.id", model)
+            span.set_attribute("model.provider", model.split("/")[0] if "/" in model else "unknown")
+            span.set_attribute("context.message_count", len(messages))
             span.set_attribute("has_image", image is not None)
+            span.set_attribute("api.endpoint", f"{self.base_url}/chat/completions")
+            
+            if image:
+                span.set_attribute("image.media_type", image.media_type)
+                # Estimate image size from base64 (base64 is ~33% larger than binary)
+                image_size = len(image.base64_data) * 3 // 4
+                span.set_attribute("image.size_bytes", image_size)
             
             try:
                 # Prepare the request payload
@@ -169,7 +182,10 @@ class OpenRouterService:
                         }
                         payload["messages"] = messages
                 
-                span.add_event("Sending request to OpenRouter")
+                span.add_event("Sending request to OpenRouter", {
+                    "model": model,
+                    "message_count": len(messages),
+                })
                 
                 async with httpx.AsyncClient(timeout=120.0) as client:
                     response = await client.post(
@@ -178,15 +194,26 @@ class OpenRouterService:
                         json=payload
                     )
                     
-                    span.set_attribute("response_status", response.status_code)
+                    duration = time.perf_counter() - start_time
+                    span.set_attribute("http.status_code", response.status_code)
+                    span.set_attribute("duration_seconds", duration)
                     
                     if response.status_code != 200:
                         error_data = response.json()
                         error_message = error_data.get("error", {}).get("message", "Unknown error")
                         span.set_status(Status(StatusCode.ERROR, error_message))
+                        span.set_attribute("error.message", error_message)
+                        track_openrouter_request(model, "error", duration)
                         raise Exception(f"OpenRouter API error: {error_message}")
                     
                     data = response.json()
+                    
+                    # Extract usage data if available
+                    usage = data.get("usage", {})
+                    if usage:
+                        span.set_attribute("tokens.prompt", usage.get("prompt_tokens", 0))
+                        span.set_attribute("tokens.completion", usage.get("completion_tokens", 0))
+                        span.set_attribute("tokens.total", usage.get("total_tokens", 0))
                     
                     # Extract the response content
                     choices = data.get("choices", [])
@@ -194,26 +221,44 @@ class OpenRouterService:
                         raise Exception("No response choices returned from OpenRouter")
                     
                     content = choices[0].get("message", {}).get("content", "")
+                    finish_reason = choices[0].get("finish_reason", "unknown")
                     
-                    span.set_attribute("response_length", len(content))
+                    span.set_attribute("response.length", len(content))
+                    span.set_attribute("response.word_count", len(content.split()))
+                    span.set_attribute("response.finish_reason", finish_reason)
                     span.set_status(Status(StatusCode.OK))
-                    span.add_event("Response received successfully")
+                    span.add_event("Response received successfully", {
+                        "response_length": len(content),
+                        "finish_reason": finish_reason,
+                    })
+                    
+                    # Track metrics
+                    track_openrouter_request(model, "success", duration)
                     
                     return content
                     
             except httpx.TimeoutException as e:
+                duration = time.perf_counter() - start_time
                 span.set_status(Status(StatusCode.ERROR, "Request timeout"))
+                span.set_attribute("error.type", "timeout")
                 span.record_exception(e)
+                track_openrouter_request(model, "timeout", duration)
                 raise Exception("Request to OpenRouter timed out. Please try again.")
                 
             except httpx.HTTPError as e:
+                duration = time.perf_counter() - start_time
                 span.set_status(Status(StatusCode.ERROR, str(e)))
+                span.set_attribute("error.type", "http_error")
                 span.record_exception(e)
+                track_openrouter_request(model, "http_error", duration)
                 raise Exception(f"HTTP error communicating with OpenRouter: {str(e)}")
                 
             except Exception as e:
+                duration = time.perf_counter() - start_time
                 span.set_status(Status(StatusCode.ERROR, str(e)))
+                span.set_attribute("error.type", type(e).__name__)
                 span.record_exception(e)
+                track_openrouter_request(model, "error", duration)
                 raise
 
 

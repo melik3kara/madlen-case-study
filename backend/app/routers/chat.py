@@ -1,5 +1,6 @@
 """Chat router for handling chat-related endpoints."""
 
+import time
 from fastapi import APIRouter, HTTPException
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
@@ -13,6 +14,14 @@ from ..schemas import (
     ErrorResponse,
 )
 from ..services import openrouter_service, chat_history_service
+from ..telemetry import (
+    track_chat_request,
+    track_chat_response,
+    track_model_usage,
+    track_error,
+    track_image_upload,
+    update_session_count,
+)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 tracer = trace.get_tracer(__name__)
@@ -33,10 +42,21 @@ async def send_chat_message(request: ChatRequest) -> ChatResponse:
     - **model**: The model ID to use (default: meta-llama/llama-3.2-3b-instruct:free)
     - **image**: Optional base64 encoded image for multimodal models
     """
+    start_time = time.perf_counter()
+    
     with tracer.start_as_current_span("api.chat.send_message") as span:
-        span.set_attribute("model", request.model)
-        span.set_attribute("message_length", len(request.message))
+        # Rich span attributes
+        span.set_attribute("model.id", request.model)
+        span.set_attribute("model.provider", request.model.split("/")[0] if "/" in request.model else "unknown")
+        span.set_attribute("message.length", len(request.message))
+        span.set_attribute("message.word_count", len(request.message.split()))
         span.set_attribute("has_image", request.image is not None)
+        span.set_attribute("session.id", chat_history_service.current_session_id)
+        
+        if request.image:
+            span.set_attribute("image.media_type", request.image.media_type)
+            span.set_attribute("image.size_bytes", len(request.image.base64_data) * 3 // 4)
+            track_image_upload(request.image.media_type, "processing")
         
         try:
             # Add user message to history
@@ -48,9 +68,13 @@ async def send_chat_message(request: ChatRequest) -> ChatResponse:
             
             # Get conversation history for context
             messages = chat_history_service.get_messages_for_api()
+            span.set_attribute("context.message_count", len(messages))
             
             # Send to OpenRouter and get response
-            span.add_event("Sending message to OpenRouter")
+            span.add_event("Sending message to OpenRouter", {
+                "model": request.model,
+                "context_messages": len(messages),
+            })
             response_content = await openrouter_service.send_message(
                 messages=messages,
                 model=request.model,
@@ -65,6 +89,22 @@ async def send_chat_message(request: ChatRequest) -> ChatResponse:
                 model=request.model
             )
             
+            # Calculate metrics
+            duration = time.perf_counter() - start_time
+            span.set_attribute("response.length", len(response_content))
+            span.set_attribute("response.word_count", len(response_content.split()))
+            span.set_attribute("duration_seconds", duration)
+            
+            # Track metrics
+            model_name = request.model.split("/")[-1].replace(":free", "") if "/" in request.model else request.model
+            track_chat_request(request.model, "success", duration, len(request.message))
+            track_chat_response(request.model, len(response_content))
+            track_model_usage(request.model, model_name)
+            update_session_count(len(chat_history_service._sessions))
+            
+            if request.image:
+                track_image_upload(request.image.media_type, "success")
+            
             span.set_status(Status(StatusCode.OK))
             
             return ChatResponse(
@@ -73,8 +113,17 @@ async def send_chat_message(request: ChatRequest) -> ChatResponse:
             )
             
         except Exception as e:
+            duration = time.perf_counter() - start_time
             span.set_status(Status(StatusCode.ERROR, str(e)))
             span.record_exception(e)
+            
+            # Track error metrics
+            error_type = type(e).__name__
+            track_chat_request(request.model, "error", duration, len(request.message))
+            track_error(error_type, "/api/chat")
+            
+            if request.image:
+                track_image_upload(request.image.media_type, "error")
             
             raise HTTPException(
                 status_code=500,

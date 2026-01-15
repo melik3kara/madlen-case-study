@@ -18,5 +18,8 @@ opentelemetry-instrumentation-httpx==0.43b0
 # OpenTelemetry - Exporter
 opentelemetry-exporter-otlp-proto-grpc==1.22.0
 
+# Prometheus Metrics
+prometheus-client==0.19.0
+
 # Utilities
 python-dotenv==1.0.1
