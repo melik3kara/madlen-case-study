@@ -13,16 +13,16 @@ from starlette.responses import JSONResponse
 class RateLimitConfig:
     """Configuration for rate limiting."""
     
-    # Requests per window
-    requests_per_minute: int = 60
+    # Requests per window 
+    requests_per_minute: int = 60  
     requests_per_hour: int = 500
     
-    # Chat-specific limits (more restrictive)
-    chat_requests_per_minute: int = 20
+    # Chat-specific limits
+    chat_requests_per_minute: int = 20  
     chat_requests_per_hour: int = 200
     
     # Burst protection
-    max_burst: int = 10  # Max requests in 1 second
+    max_burst: int = 10 
     
     # Exempt paths
     exempt_paths: Tuple[str, ...] = ("/health", "/metrics", "/docs", "/redoc", "/openapi.json")
@@ -172,11 +172,28 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         
         client_ip = self._get_client_ip(request)
-        is_chat = "/chat" in path and request.method == "POST"
+        
+        # Session management endpoints should NOT count towards chat limit
+        # Only actual chat messages to /api/chat (POST without session operations)
+        session_management_paths = (
+            "/sessions",
+            "/new-session", 
+            "/switch",
+            "/clear",
+        )
+        is_session_operation = any(p in path for p in session_management_paths)
+        is_chat = path.endswith("/api/chat") and request.method == "POST" and not is_session_operation
+        
+        # DEBUG LOG
+        print(f"🔒 [RateLimit] IP={client_ip}, Path={path}, Method={request.method}, IsChat={is_chat}")
         
         allowed, reason, headers = _rate_limiter.check_rate_limit(
             client_ip, is_chat, self.config
         )
+        
+        # DEBUG LOG
+        remaining = headers.get('X-RateLimit-Remaining-Minute', '?')
+        print(f"🔒 [RateLimit] Allowed={allowed}, Remaining={remaining}, Reason={reason}")
         
         if not allowed:
             response = JSONResponse(

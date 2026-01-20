@@ -34,6 +34,7 @@ export interface ChatResponse {
   message: ChatMessage;
   success: boolean;
   error?: string;
+  session_id?: string;
 }
 
 export interface ModelsResponse {

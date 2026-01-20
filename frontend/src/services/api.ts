@@ -68,8 +68,9 @@ export const chatApi = {
   /**
    * Send a chat message
    */
-  sendMessage: async (request: ChatRequest): Promise<ChatResponse> => {
-    return fetchApi<ChatResponse>('/chat', {
+  sendMessage: async (request: ChatRequest, sessionId?: string): Promise<ChatResponse> => {
+    const url = sessionId ? `/chat?session_id=${sessionId}` : '/chat';
+    return fetchApi<ChatResponse>(url, {
       method: 'POST',
       body: JSON.stringify(request),
     });
@@ -78,15 +79,17 @@ export const chatApi = {
   /**
    * Get chat history
    */
-  getHistory: async (): Promise<HistoryResponse> => {
-    return fetchApi<HistoryResponse>('/chat/history');
+  getHistory: async (sessionId?: string): Promise<HistoryResponse> => {
+    const url = sessionId ? `/chat/history?session_id=${sessionId}` : '/chat/history';
+    return fetchApi<HistoryResponse>(url);
   },
 
   /**
    * Clear chat history
    */
-  clearHistory: async (): Promise<{ message: string; success: boolean }> => {
-    return fetchApi('/chat/clear', {
+  clearHistory: async (sessionId?: string): Promise<{ message: string; success: boolean }> => {
+    const url = sessionId ? `/chat/clear?session_id=${sessionId}` : '/chat/clear';
+    return fetchApi(url, {
       method: 'POST',
     });
   },

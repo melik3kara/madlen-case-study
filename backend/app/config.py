@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     otel_service_name: str = "chat-backend"
     otel_exporter_otlp_endpoint: str = "http://jaeger:4317"
     
+    # Database Configuration
+    database_url: str = "postgresql+asyncpg://postgres:postgres@postgres:5432/chatdb"
+    database_echo: bool = False  # SQL query logging
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -35,3 +39,4 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()
+

@@ -1,4 +1,26 @@
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: chat-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: chatdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   # Jaeger - Distributed Tracing Backend
   jaeger:
     image: jaegertracing/all-in-one:1.53
@@ -26,11 +48,15 @@ services:
       - OTEL_SERVICE_NAME=chat-backend
       - JAEGER_HOST=jaeger
       - JAEGER_PORT=6831
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/chatdb
       - DEBUG=false
     ports:
       - "8000:8000"
     depends_on:
-      - jaeger
+      postgres:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
     networks:
       - chat-network
     restart: unless-stopped
@@ -58,3 +84,7 @@ services:
 networks:
   chat-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

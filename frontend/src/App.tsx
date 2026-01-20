@@ -15,6 +15,20 @@ function App() {
   // Sidebar state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+  
+  // Active session ID - persist in localStorage
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    return localStorage.getItem('activeSessionId');
+  });
+  
+  // Save activeSessionId to localStorage when it changes
+  useEffect(() => {
+    if (activeSessionId) {
+      localStorage.setItem('activeSessionId', activeSessionId);
+    } else {
+      localStorage.removeItem('activeSessionId');
+    }
+  }, [activeSessionId]);
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -31,16 +45,14 @@ function App() {
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
-  // Load models and history on mount
+  // Load models, history and sessions on mount
   useEffect(() => {
     loadModels();
-    loadHistory();
-  }, []);
-
-  // Load sessions when messages change
-  useEffect(() => {
     loadSessions();
-  }, [messages]);
+    // Load history with saved session ID
+    const savedSessionId = localStorage.getItem('activeSessionId');
+    loadHistory(savedSessionId);
+  }, []);
 
   const loadModels = async () => {
     setIsLoadingModels(true);
@@ -67,10 +79,14 @@ function App() {
     }
   };
 
-  const loadHistory = async () => {
+  const loadHistory = async (sessionId?: string | null) => {
     try {
-      const response = await chatApi.getHistory();
+      const response = await chatApi.getHistory(sessionId || undefined);
       setMessages(response.messages);
+      // Update active session ID from response
+      if (response.session_id) {
+        setActiveSessionId(response.session_id);
+      }
     } catch (err) {
       console.error('Failed to load history:', err);
     }
@@ -115,11 +131,16 @@ function App() {
           message: content,
           model: selectedModel,
           image,
-        });
+        }, activeSessionId || undefined);
 
         const responseTime = (performance.now() - startTime) / 1000; // Convert to seconds
 
         if (response.success) {
+          // Save session_id from response (important for first message in new session)
+          if (response.session_id && !activeSessionId) {
+            setActiveSessionId(response.session_id);
+          }
+          
           setMessages((prev) => {
             const newMessages = [...prev, response.message];
             // Track response time for the new AI message
@@ -149,12 +170,12 @@ function App() {
         setIsLoading(false);
       }
     },
-    [selectedModel, isLoading]
+    [selectedModel, isLoading, activeSessionId]
   );
 
   const handleClearChat = async () => {
     try {
-      await chatApi.clearHistory();
+      await chatApi.clearHistory(activeSessionId || undefined);
       setMessages([]);
       setResponseTimes(new Map());
       setError(null);
@@ -166,12 +187,21 @@ function App() {
 
   const handleNewSession = async () => {
     try {
-      await chatApi.newSession();
+      const response = await chatApi.newSession();
       setMessages([]);
       setResponseTimes(new Map());
       setError(null);
-      // Reload sessions to update the sidebar
-      await loadSessions();
+      // Update active session ID
+      setActiveSessionId(response.session_id);
+      // Update local sessions state (add new session, mark as active)
+      const newSession: ChatSession = {
+        id: response.session_id,
+        title: 'Yeni Sohbet',
+        messageCount: 0,
+        lastUpdated: new Date().toISOString(),
+        isActive: true,
+      };
+      setSessions(prev => [newSession, ...prev.map(s => ({ ...s, isActive: false }))]);
     } catch (err) {
       console.error('Failed to create new session:', err);
       setError('Yeni oturum oluşturulurken hata oluştu.');
@@ -182,6 +212,8 @@ function App() {
     try {
       const response = await chatApi.switchSession(id);
       if (response.success) {
+        // Update active session ID
+        setActiveSessionId(id);
         // Map messages to ChatMessage format
         const mappedMessages: ChatMessage[] = response.messages.map(msg => ({
           role: msg.role as 'user' | 'assistant' | 'system',
@@ -192,8 +224,11 @@ function App() {
         setMessages(mappedMessages);
         setResponseTimes(new Map()); // Clear response times for switched session
         setError(null);
-        // Reload sessions to update active state
-        await loadSessions();
+        // Update local sessions state (set active session)
+        setSessions(prev => prev.map(s => ({
+          ...s,
+          isActive: s.id === id
+        })));
       }
     } catch (err) {
       console.error('Failed to switch session:', err);
@@ -204,13 +239,13 @@ function App() {
   const handleDeleteSession = async (id: string) => {
     try {
       await chatApi.deleteSession(id);
-      // If we deleted the active session, clear messages
-      const deletedSession = sessions.find(s => s.id === id);
-      if (deletedSession?.isActive) {
+      // If we deleted the active session, clear messages and active session ID
+      if (activeSessionId === id) {
         setMessages([]);
+        setActiveSessionId(null);
       }
-      // Reload sessions
-      await loadSessions();
+      // Update local sessions state (remove deleted session)
+      setSessions(prev => prev.filter(s => s.id !== id));
     } catch (err) {
       console.error('Failed to delete session:', err);
       setError('Oturum silinirken hata oluştu.');

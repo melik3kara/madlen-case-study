@@ -50,6 +50,7 @@ class ChatResponse(BaseModel):
     message: ChatMessage
     success: bool = True
     error: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 class ModelInfo(BaseModel):

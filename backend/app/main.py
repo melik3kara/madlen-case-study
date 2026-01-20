@@ -11,6 +11,7 @@ from .routers import chat_router, models_router
 from .telemetry import setup_telemetry, init_metrics, get_metrics, track_request
 from .telemetry.setup import shutdown_telemetry
 from .middleware import RateLimitMiddleware
+from .database import init_db, close_db
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
@@ -42,10 +43,15 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     print(f"🚀 Starting {settings.app_name} v{settings.app_version}")
     
+    # Initialize database
+    print("📦 Initializing database...")
+    await init_db()
+    
     yield
     
     # Shutdown
     print("👋 Shutting down application...")
+    await close_db()
     shutdown_telemetry()
 
 
