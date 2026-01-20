@@ -147,6 +147,15 @@ export const chatApi = {
       method: 'DELETE',
     });
   },
+
+  /**
+   * Update session title
+   */
+  updateSessionTitle: async (sessionId: string, title: string): Promise<{ message: string; session_id: string; title: string; success: boolean }> => {
+    return fetchApi(`/chat/sessions/${sessionId}?title=${encodeURIComponent(title)}`, {
+      method: 'PATCH',
+    });
+  },
 };
 
 /**

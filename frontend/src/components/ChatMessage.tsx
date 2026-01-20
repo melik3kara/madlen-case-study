@@ -3,6 +3,9 @@ import { useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import type { ChatMessage as ChatMessageType } from '../types';
 
 interface ChatMessageProps {
@@ -36,6 +39,26 @@ export function ChatMessage({ message, isLatest = false, isDark = false, respons
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+
+  // Convert square bracket LaTeX format [ ... ] to $$ ... $$ for remark-math
+  const processLatexContent = (content: string) => {
+    // Replace [ LaTeX ] with $$ LaTeX $$ (display math)
+    // Match lines that start with optional whitespace, then [, then contain backslash, then ]
+    return content
+      .split('\n')
+      .map(line => {
+        // Match lines like: [ \int ... ]
+        if (/^\s*\[\s*\\/.test(line) && line.includes(']')) {
+          // Extract content between [ and ]
+          const match = /\[\s*(.*?)\s*\]/.exec(line);
+          if (match) {
+            return `$$${match[1]}$$`;
+          }
+        }
+        return line;
+      })
+      .join('\n');
   };
 
   // Memoize the markdown components to prevent re-renders
@@ -272,9 +295,13 @@ export function ChatMessage({ message, isLatest = false, isDark = false, respons
               </p>
             ))
           ) : (
-            // AI messages - full Markdown rendering
-            <ReactMarkdown components={markdownComponents}>
-              {message.content}
+            // AI messages - full Markdown rendering with LaTeX support
+            <ReactMarkdown 
+              components={markdownComponents}
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+            >
+              {processLatexContent(message.content)}
             </ReactMarkdown>
           )}
         </div>

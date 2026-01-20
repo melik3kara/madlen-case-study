@@ -252,6 +252,19 @@ function App() {
     }
   };
 
+  const handleUpdateSessionTitle = async (id: string, newTitle: string) => {
+    try {
+      await chatApi.updateSessionTitle(id, newTitle);
+      // Update local sessions state
+      setSessions(prev => prev.map(s => 
+        s.id === id ? { ...s, title: newTitle } : s
+      ));
+    } catch (err) {
+      console.error('Failed to update session title:', err);
+      setError('Oturum başlığı güncellenirken hata oluştu.');
+    }
+  };
+
   const handleDismissError = () => {
     setError(null);
   };
@@ -284,6 +297,7 @@ function App() {
           onNewSession={handleNewSession}
           onSelectSession={handleSelectSession}
           onDeleteSession={handleDeleteSession}
+          onUpdateSessionTitle={handleUpdateSessionTitle}
           currentMessageCount={messages.length}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}

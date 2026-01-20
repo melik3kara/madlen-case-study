@@ -22,6 +22,7 @@ interface SidebarProps {
   onNewSession: () => void;
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
+  onUpdateSessionTitle: (id: string, title: string) => void;
   currentMessageCount: number;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -32,11 +33,14 @@ export function Sidebar({
   onNewSession,
   onSelectSession,
   onDeleteSession,
+  onUpdateSessionTitle,
   currentMessageCount,
   isCollapsed,
   onToggleCollapse,
 }: SidebarProps) {
   const [hoveredSession, setHoveredSession] = useState<string | null>(null);
+  const [editingSession, setEditingSession] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState<string>('');
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -130,13 +134,47 @@ export function Sidebar({
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className={`text-sm font-medium truncate ${
-                        session.isActive 
-                          ? 'text-dark-900 dark:text-dark-100' 
-                          : 'text-dark-700 dark:text-dark-300'
-                      }`}>
-                        {session.title}
-                      </h4>
+                      {editingSession === session.id ? (
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && editTitle.trim()) {
+                              onUpdateSessionTitle(session.id, editTitle.trim());
+                              setEditingSession(null);
+                            } else if (e.key === 'Escape') {
+                              setEditingSession(null);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (editTitle.trim() && editTitle !== session.title) {
+                              onUpdateSessionTitle(session.id, editTitle.trim());
+                            }
+                            setEditingSession(null);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          autoFocus
+                          maxLength={50}
+                          className="w-full px-2 py-1 text-sm font-medium rounded-lg bg-white dark:bg-dark-700 border border-primary-500 dark:border-primary-400 text-dark-900 dark:text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      ) : (
+                        <h4 
+                          className={`text-sm font-medium truncate cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors w-full whitespace-nowrap overflow-hidden text-ellipsis ${
+                            session.isActive 
+                              ? 'text-dark-900 dark:text-dark-100' 
+                              : 'text-dark-700 dark:text-dark-300'
+                          }`}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            setEditingSession(session.id);
+                            setEditTitle(session.title);
+                          }}
+                          title={`Çift tıkla düzenle: ${session.title}`}
+                        >
+                          {session.title.length > 20 ? session.title.substring(0, 20) + '...' : session.title}
+                        </h4>
+                      )}
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-dark-500 dark:text-dark-400 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
