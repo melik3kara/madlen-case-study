@@ -61,13 +61,15 @@ Bu uygulama, kullanıcıların çeşitli AI modelleriyle sohbet edebileceği tem
 - 🎨 **Modern UI** - Sıcak renk paleti (sarı/turuncu/kırmızı)
 - 🌓 **Dark/Light Mode** - Tema tercihi localStorage'da saklanır
 - 📱 **Responsive Tasarım** - Mobil uyumlu arayüz
-- 📚 **Sohbet Geçmişi Sidebar'ı** - Katlanabilir oturum listesi
+- 📚 **Sohbet Geçmişi Sidebar'ı** - Katlanabilir oturum listesi, editable başlıklar
 - 🖼️ **Görsel Yükleme** - Sürükle & bırak + otomatik sıkıştırma
 - ⏳ **Loading States** - Yazma göstergesi ve hata mesajları
 - 📝 **Markdown Rendering** - AI yanıtlarında zengin metin formatı
 - 🎨 **Syntax Highlighting** - Kod bloklarında sözdizimi renklendirme
+- 📐 **LaTeX/KaTeX Desteği** - Matematiksel formüller ve denklemler
 - ⏱️ **Response Time Display** - Yanıt süresi gösterimi
 - 📋 **Copy to Clipboard** - Tek tıkla kod/metin kopyalama
+- ✏️ **Editable Oturum Başlıkları** - Double-click ile başlık düzenle, otomatik kayıt
 
 ---
 
@@ -117,13 +119,75 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 - Retry butonu ile kolay yeniden deneme
 - OpenTelemetry'de hata kaydı
 
-### 6. Image Compression
-- Otomatik görsel boyutlandırma (max 1024x1024)
-- Kalite optimizasyonu
-- Base64 encoding
-- Boyut limiti kontrolü (max 2MB)
+### 7. SQLAlchemy ORM ve Veritabanı Yönetimi
 
----
+**Veritabanı Mimarisi:**
+```
+PostgreSQL 16
+├── chat_sessions tablo
+│   ├── id (UUID, Primary Key)
+│   ├── title (String, indexed)
+│   ├── created_at (DateTime)
+│   ├── updated_at (DateTime)
+│   └── messages (Foreign Key relationship)
+│
+└── messages tablo
+    ├── id (UUID, Primary Key)
+    ├── session_id (UUID, Foreign Key → chat_sessions)
+    ├── role (Enum: 'user' | 'assistant')
+    ├── content (Text)
+    ├── model (String, nullable)
+    └── created_at (DateTime)
+```
+
+**Async ORM Kullanımı:**
+- SQLAlchemy 2.0.25 async engine kullanarak yüksek performanslı veritabanı işlemleri
+- asyncpg driver ile native PostgreSQL async bağlantıları
+- Per-request ChatHistoryDBService ile dependency injection
+- Tüm sorgulamalar async/await ile yapılır
+
+**Neden Önemli:** Production ortamında yüksek concurrency altında bile performans düşüşü olmaz. Oturumlar veritabanında persiste edilir ve uygulama yeniden başlansa da tüm geçmiş korunur.
+
+### 8. Oturum Yönetimi ve Persistence
+
+**İki-katmanlı Oturum Takibi:**
+
+1. **Backend Katmanı (Veritabanı):**
+   - Her oturum PostgreSQL'de kaydedilir
+   - ChatHistoryDBService async metodlar ile veritabanı işlemleri yönetir
+   - Her HTTP isteği için bağımsız service instance (dependency injection)
+
+2. **Frontend Katmanı (localStorage):**
+   - Aktif oturum ID'si localStorage'da saklanır
+   - Sayfa yenilense bile oturum devam eder
+   - `activeSessionId` state'i ile React tarafında takip edilir
+
+**Oturum Başlığı Yönetimi:**
+- 5. mesaja kadar başlık otomatik olarak mesaja dayalı oluşturulur
+- Kullanıcı double-click ile başlığı manuel olarak değiştirebilir
+- PATCH endpoint'i ile başlık güncellemesi gerçekleştirilir
+- UI'da 20 karaktere truncate edilir (tooltip'te tam başlık gösterilir)
+
+**Neden Önemli:** Kullanıcı deneyiminin sürekli olmasını sağlar. Oturumlar kalıcı, başlıklar kişiselleştirilebilir, ve sayfa refresh'leri tüm bağlamı koruyor.
+
+### 9. LaTeX/KaTeX Matematiksel Formül Desteği
+
+**Teknoloji Stack:**
+- `remark-math`: Markdown'da LaTeX syntax'ını tanır
+- `rehype-katex`: KaTeX'i kullanarak formülleri render eder
+- `katex` CSS: Matematiksel notasyon stillendirmesi
+
+**Format Dönüşümü:**
+```
+Backend yanıtı: [ \int_0^{\infty} e^{-x^2} dx ]
+Frontend işlemi: processLatexContent() fonksiyonu
+Sonuç: $$ \int_0^{\infty} e^{-x^2} dx $$
+Render: KaTeX tarafından matematiksel gösterim
+```
+
+**Neden Önemli:** Bilim, mühendislik ve matematik konularında AI yanıtlarının profesyonel görünümü için kullanıcı deneyimi önemli ölçüde iyileşir.
+
+
 
 ## 🏗️ Mimari
 
@@ -169,6 +233,9 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 |-----------|--------------|
 | **Python 3.11** | Modern async özellikler, geniş kütüphane desteği, hızlı geliştirme |
 | **FastAPI** | Yüksek performans, otomatik OpenAPI dokümantasyonu, native async desteği, Pydantic entegrasyonu |
+| **SQLAlchemy 2.0** | Modern async ORM, type hints desteği, güçlü query builder |
+| **PostgreSQL 16** | Production-ready ilişkisel veritabanı, güçlü veri türü desteği |
+| **asyncpg** | PostgreSQL'in native async driver'ı, yüksek performans |
 | **httpx** | Async HTTP istemci, HTTP/2 desteği, modern API, retry desteği |
 | **Pydantic** | Type-safe veri validasyonu, otomatik JSON serialization |
 | **OpenTelemetry** | Endüstri standardı dağıtık izleme, vendor-agnostic, OTLP protokolü |
@@ -272,8 +339,19 @@ docker-compose down -v
 | `POST` | `/api/chat/new-session` | Yeni sohbet oturumu başlat |
 | `GET` | `/api/chat/sessions` | Tüm oturumları listele |
 | `POST` | `/api/chat/sessions/{id}/switch` | Oturum değiştir |
+| `PATCH` | `/api/chat/sessions/{id}` | Oturum başlığını güncelle |
 | `DELETE` | `/api/chat/sessions/{id}` | Oturum sil |
 | `POST` | `/api/chat/clear` | Geçmişi temizle |
+
+#### Chat (DB ile)
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| `POST` | `/api/chat/db` | Mesaj gönder ve veritabanına kaydet |
+| `GET` | `/api/chat/db/sessions` | Veritabanından tüm oturumları al |
+| `GET` | `/api/chat/db/sessions/{id}` | Belirtilen oturumun detaylarını al |
+| `PATCH` | `/api/chat/db/sessions/{id}` | Oturum başlığını güncellerle |
+| `DELETE` | `/api/chat/db/sessions/{id}` | Oturumu veritabanından sil |
+| `GET` | `/api/chat/db/history` | Geçerli oturumun geçmişini al |
 
 #### Models
 | Method | Endpoint | Açıklama |
@@ -302,16 +380,27 @@ X-Response-Time: 0.125s
 ### Örnek İstek
 
 ```bash
-# Mesaj gönder
-curl -X POST http://localhost:8000/api/chat \
+# Veritabanına kaydederek mesaj gönder
+curl -X POST http://localhost:8000/api/chat/db \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Merhaba! Nasılsın?",
-    "model": "meta-llama/llama-3.3-70b-instruct:free"
+    "model": "meta-llama/llama-3.3-70b-instruct:free",
+    "session_id": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+
+# Oturum başlığını güncelle
+curl -X PATCH http://localhost:8000/api/chat/db/sessions/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Python Sohbeti"
   }'
 
 # Modelleri listele
 curl http://localhost:8000/api/models
+
+# Veritabanından tüm oturumları al
+curl http://localhost:8000/api/chat/db/sessions
 ```
 
 ---
@@ -447,12 +536,17 @@ madlen-case-study/
 │   │   ├── __init__.py
 │   │   ├── main.py              # FastAPI uygulama başlangıcı
 │   │   ├── config.py            # Yapılandırma ve ortam değişkenleri
+│   │   ├── database.py          # SQLAlchemy async engine ve session
+│   │   ├── models/              # SQLAlchemy ORM modelleri
+│   │   │   ├── __init__.py
+│   │   │   └── chat.py          # ChatSession ve Message modelleri
 │   │   ├── middleware/          # Middleware modülleri
 │   │   │   ├── __init__.py
 │   │   │   └── rate_limit.py    # Rate limiting middleware
 │   │   ├── routers/
 │   │   │   ├── __init__.py
 │   │   │   ├── chat.py          # Chat endpoint'leri
+│   │   │   ├── chat_db.py       # Chat + veritabanı endpoint'leri
 │   │   │   └── models.py        # Model endpoint'leri
 │   │   ├── schemas/
 │   │   │   ├── __init__.py
@@ -460,11 +554,13 @@ madlen-case-study/
 │   │   ├── services/
 │   │   │   ├── __init__.py
 │   │   │   ├── openrouter.py    # OpenRouter API servisi (retry logic)
-│   │   │   └── chat_history.py  # Sohbet geçmişi yönetimi
+│   │   │   ├── chat_history.py  # Sohbet geçmişi yönetimi (async)
+│   │   │   └── chat_db.py       # ChatHistoryDBService (SQLAlchemy async)
 │   │   └── telemetry/
 │   │       ├── __init__.py
 │   │       ├── setup.py         # OpenTelemetry yapılandırması
 │   │       └── metrics.py       # Prometheus metrikleri
+│   ├── conftest.py              # pytest yapılandırması
 │   ├── requirements.txt
 │   └── Dockerfile
 │
@@ -472,9 +568,9 @@ madlen-case-study/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Header.tsx       # Üst menü ve model seçici
-│   │   │   ├── Sidebar.tsx      # Sohbet geçmişi sidebar'ı
+│   │   │   ├── Sidebar.tsx      # Sohbet geçmişi sidebar'ı (editable titles)
 │   │   │   ├── ChatInput.tsx    # Mesaj giriş alanı
-│   │   │   ├── ChatMessage.tsx  # Markdown + Syntax Highlighting
+│   │   │   ├── ChatMessage.tsx  # Markdown + LaTeX + Syntax Highlighting
 │   │   │   ├── MessageList.tsx  # Mesaj listesi
 │   │   │   ├── ModelSelector.tsx# Model seçim dropdown'u
 │   │   │   ├── ImageUpload.tsx  # Görsel yükleme + sıkıştırma
@@ -484,7 +580,7 @@ madlen-case-study/
 │   │   │   └── api.ts           # API istemci fonksiyonları
 │   │   ├── types/
 │   │   │   └── index.ts         # TypeScript tip tanımları
-│   │   ├── App.tsx              # Ana uygulama bileşeni
+│   │   ├── App.tsx              # Ana uygulama bileşeni (session state + localStorage)
 │   │   └── main.tsx             # React giriş noktası
 │   ├── package.json
 │   ├── tailwind.config.js
